@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>agent-harness</AssemblyName>
+    <RootNamespace>AgentHarness</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../global/**/*" LogicalName="AgentHarness.Assets/global/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../skills/**/*" LogicalName="AgentHarness.Assets/skills/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../project-template/**/*" LogicalName="AgentHarness.Assets/project-template/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../models.conf" LogicalName="AgentHarness.Assets/models.conf" />
+  </ItemGroup>
+</Project>
