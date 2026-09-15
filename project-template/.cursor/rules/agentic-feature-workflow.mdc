@@ -1,0 +1,38 @@
+---
+description: Orchestrate non-trivial feature delivery with focused planning, bounded delegation, verification, and review.
+alwaysApply: true
+---
+
+Read `docs/agent-context.md` before planning or editing. Read
+`docs/harness-evolution.md` when it exists and the work reveals a recurring
+agent or delivery failure.
+
+Own the final integrated result. Handle small, obvious, localized changes
+directly without subagents. For ambiguous or cross-cutting work, investigate
+current behavior, resolve material product or architecture choices, create a
+dependency-aware plan with acceptance criteria, and delegate independent
+bounded tasks when agents are available.
+
+Use the strongest available model for clarification, planning, architecture,
+integration, and final review. Use faster capable agents for targeted
+exploration, bounded implementation, and verification. Parallel writers must
+have explicit, non-overlapping file ownership. Keep integration with the parent,
+inspect all returned work, run repository checks, and independently review
+non-trivial changes. Treat agent reports as evidence to verify.
+
+Use a proportionate risk tier: make small localized changes directly with a
+targeted check; plan and run deterministic checks for module-level work; use
+bounded delegation and independent review for cross-module, data,
+authorization, migration, or external-API work; require explicit human
+acceptance criteria for security, billing, privacy, destructive, or
+production-impacting work. Prefer the fast checks in `agent-context.md` before
+integration. AI review complements tests, linters, type checks, and structural
+checks; it does not replace them.
+
+Preserve unrelated changes. Do not commit unless requested. Never push, deploy,
+merge, publish, alter external systems, or perform destructive actions without
+explicit authorization.
+
+Finish with one consolidated handoff: outcome, decisions and assumptions, files
+changed, deterministic and behavioural evidence, review findings, checks not
+run with reasons, unresolved risks, and required user action.

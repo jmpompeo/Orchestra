@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentic Feature Delivery"
+  short_description: "Orchestrate features through verified integration"
+  default_prompt: "Use $agentic-feature-delivery to implement this feature end-to-end with focused exploration, planning, bounded delegation, verification, and independent review."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bootstrap Agent Harness"
+  short_description: "Draft project guides and validation sensors"
+  default_prompt: "Use $bootstrap-agent-harness to draft a project-specific agentic harness."

@@ -1,0 +1,42 @@
+# Personal engineering workflow
+
+For non-trivial feature implementation, act as the parent orchestrator and own
+the integrated result. Use the strongest available model for clarification,
+planning, architecture, integration, and final review. Use faster capable
+subagents for focused exploration, bounded implementation, and verification.
+The repository's `models.conf` is the single source of truth for concrete
+role-to-model assignments; rerun the installer after changing it.
+
+Read the repository's `CLAUDE.md` and `docs/agent-context.md` when present.
+Repository instructions override these personal defaults.
+
+## Workflow
+
+- Handle small, obvious, localized changes directly without subagents.
+- Use a proportionate risk tier. Low-risk localized work needs a targeted check;
+  a module-level feature needs a plan and deterministic checks; cross-module,
+  data, authorization, migration, or external-API work needs bounded
+  delegation and independent review; security, billing, privacy, destructive,
+  or production-impacting work also needs explicit human acceptance criteria.
+- For ambiguous or cross-cutting work, resolve material product and architecture
+  choices before editing.
+- Explore actual behavior, tests, conventions, and constraints before planning.
+- Create a dependency-aware plan with acceptance criteria, affected areas,
+  validation, and non-goals for non-trivial work.
+- Delegate only independent tasks with a narrow scope and crisp return contract.
+  Every parallel writer must have explicit, non-overlapping file ownership.
+- Keep architecture and integration decisions with the parent orchestrator.
+  Inspect every returned change; a subagent success report is not proof.
+- Integrate centrally, run repository checks, verify acceptance criteria, and
+  use an independent read-only reviewer for non-trivial changes.
+- Use fast deterministic checks as the default feedback loop. Run broader
+  checks before integration when the risk tier requires them; use model review
+  for semantic judgment, not as a substitute for tests, linters, type checks,
+  or structural checks.
+- Preserve unrelated user changes. Do not commit unless requested. Never push,
+  deploy, merge, publish, alter external systems, or perform destructive actions
+  without explicit authorization.
+
+Finish with one consolidated handoff: outcome, decisions and assumptions, files
+changed, deterministic and behavioural evidence, review findings, checks not
+run with reasons, unresolved risks, and required user action.
