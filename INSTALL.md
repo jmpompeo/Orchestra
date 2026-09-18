@@ -132,8 +132,12 @@ dotnet build AgentHarness.sln --configuration Release
 dotnet run --project tests/AgentHarness.Tests/AgentHarness.Tests.csproj --configuration Release
 ```
 
-Pushing a `v*` tag builds self-contained single-file binaries on the matching
-macOS, Linux, and Windows runners, produces `SHA256SUMS`, and publishes the
-private GitHub Release. Checksums provide download-integrity verification;
-Apple notarization and Windows code signing remain deferred until protected
-signing identities are available.
+Use Conventional Commit messages for changes that should release: `feat:` for a
+minor version, `fix:` for a patch, and `feat!:` or `fix!:` for a major version.
+After merged changes reach `main`, Release Please opens or updates a release
+PR. Merging that PR creates the version tag and private GitHub Release; the
+workflow then builds self-contained single-file binaries on the matching macOS,
+Linux, and Windows runners and uploads `SHA256SUMS`. No manual tag creation is
+required. Checksums provide download-integrity verification; Apple notarization
+and Windows code signing remain deferred until protected signing identities are
+available.
