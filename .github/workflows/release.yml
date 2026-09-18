@@ -3,6 +3,12 @@ name: Release agent-harness
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Existing v* release tag whose assets should be rebuilt.
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -11,6 +17,7 @@ permissions:
 
 jobs:
   prepare-release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -22,9 +29,30 @@ jobs:
           release-type: simple
           token: ${{ secrets.GITHUB_TOKEN }}
 
+  validate-recovery:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+    steps:
+      - id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          case "$TAG_NAME" in
+            v[0-9]*) ;;
+            *) echo "tag_name must begin with v followed by a version number." >&2; exit 1 ;;
+          esac
+          gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
   publish:
-    needs: prepare-release
-    if: needs.prepare-release.outputs.release_created == 'true'
+    needs: [prepare-release, validate-recovery]
+    if: >-
+      ${{ always() && ((github.event_name == 'workflow_dispatch' &&
+      needs.validate-recovery.result == 'success') ||
+      needs.prepare-release.outputs.release_created == 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +71,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare-release.outputs.tag_name }}
+          ref: >-
+            ${{ github.event_name == 'workflow_dispatch' &&
+            needs.validate-recovery.outputs.tag_name || needs.prepare-release.outputs.tag_name }}
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -58,8 +88,11 @@ jobs:
           name: agent-harness-${{ matrix.rid }}
           path: agent-harness-${{ matrix.rid }}.zip
   release:
-    needs: [prepare-release, publish]
-    if: needs.prepare-release.outputs.release_created == 'true'
+    needs: [prepare-release, validate-recovery, publish]
+    if: >-
+      ${{ always() && ((github.event_name == 'workflow_dispatch' &&
+      needs.validate-recovery.result == 'success') ||
+      needs.prepare-release.outputs.release_created == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -69,5 +102,7 @@ jobs:
       - run: cd release-assets && sha256sum agent-harness-*.zip > SHA256SUMS
       - env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ needs.prepare-release.outputs.tag_name }}
+          TAG_NAME: >-
+            ${{ github.event_name == 'workflow_dispatch' &&
+            needs.validate-recovery.outputs.tag_name || needs.prepare-release.outputs.tag_name }}
         run: gh release upload "$TAG_NAME" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
