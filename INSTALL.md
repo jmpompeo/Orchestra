@@ -43,6 +43,11 @@ generated from each canonical `SKILL.md`, excluding Codex-only agent metadata.
 For a personal Cursor baseline, run `agent-harness cursor-rules --print` and
 paste the result into Cursor Settings → Rules → User Rules.
 
+Bundled workflows include `$grill-me` for resolving a non-trivial plan or
+design before implementation, `$agentic-feature-delivery` for executing an
+approved feature, and `$bootstrap-agent-harness` for adopting the framework in
+an existing repository.
+
 ## Conflicts, backups, and safety
 
 Preview changes first:
