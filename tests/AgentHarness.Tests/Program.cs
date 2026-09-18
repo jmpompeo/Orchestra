@@ -24,6 +24,7 @@ try
     Check(app.Run(new[] { "install", "--tools", "codex" }) == 0, "Codex install succeeds in isolated home");
     Check(File.Exists(Path.Combine(home, ".codex", "AGENTS.md")), "Codex instructions installed");
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "agentic-feature-delivery", "SKILL.md")), "Codex skill installed");
+    Check(File.Exists(Path.Combine(home, ".agents", "skills", "grill-me", "SKILL.md")), "grill-me skill installed");
     Check(app.Run(new[] { "install", "--tools", "codex" }) == 0, "repeat install is a no-op");
     var instructions = Path.Combine(home, ".codex", "AGENTS.md");
     File.WriteAllText(instructions, "personal change");
@@ -47,6 +48,7 @@ try
         Check(!Directory.Exists(Path.Combine(project, ".cursor")), "project preview does not write");
         Check(app.Run(new[] { "init-project", "--tools", "cursor", "--apply" }) == 0, "Cursor project apply succeeds");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")), "Cursor command generated");
+        Check(File.Exists(Path.Combine(project, ".cursor", "commands", "grill-me.md")), "Cursor grill-me command generated");
     }
     finally { Directory.SetCurrentDirectory(previous); }
     Check(app.Run(new[] { "uninstall", "--tools", "codex" }) == 0, "uninstall succeeds");
