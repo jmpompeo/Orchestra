@@ -141,3 +141,9 @@ Linux, and Windows runners and uploads `SHA256SUMS`. No manual tag creation is
 required. Checksums provide download-integrity verification; Apple notarization
 and Windows code signing remain deferred until protected signing identities are
 available.
+
+If an existing release is missing or has corrupt assets, open **Actions →
+Release agent-harness → Run workflow**, enter its existing tag (for example
+`v1.0.0`), and run it. The recovery path validates that the release exists,
+rebuilds all platform assets from that tag, and replaces only the release
+archives and checksum manifest. It does not create a new version or tag.
