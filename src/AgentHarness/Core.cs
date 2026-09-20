@@ -86,7 +86,7 @@ public sealed class HarnessApp
     private readonly AssetStore _assets = new();
     private readonly string _home;
     private readonly string _statePath;
-    private const string Repository = "jmpompeo/agent-workflow-config";
+    private const string Repository = "jmpompeo/orchestra";
 
     public HarnessApp(string? home = null, string? stateDirectory = null)
     {
@@ -114,7 +114,7 @@ public sealed class HarnessApp
                 "init-project" => InitProject(RequireTools(options, true), options),
                 "cursor-rules" => CursorRules(options),
                 "update" => Update(options),
-                _ => throw new ArgumentException($"Unknown command '{command}'. Run agent-harness --help.")
+                _ => throw new ArgumentException($"Unknown command '{command}'. Run orchestrate --help.")
             };
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException)
@@ -125,7 +125,7 @@ public sealed class HarnessApp
 
     private static int Help()
     {
-        Console.WriteLine("agent-harness — portable AI engineering harness configuration\n\n" +
+        Console.WriteLine("orchestrate — Orchestra's portable AI engineering workflow CLI\n\n" +
             "Commands:\n  install [--tools codex,claude,cursor|all] [--dry-run] [--backup]\n  status\n  doctor\n  update\n  uninstall --tools codex,claude [--dry-run]\n  init-project [--tools codex,claude,cursor|all] [--apply]\n  cursor-rules --print\n\n" +
             "Without --tools, install and init-project ask interactively. Use --tools in scripts or CI.");
         return 0;
@@ -145,7 +145,7 @@ public sealed class HarnessApp
         var changes = Apply(plan, state, options.DryRun, options.Backup, onlyMissing: false, operation: "install", trustedRoot: _home);
         ReconcileStaleSkills(tools, plan, state, options.DryRun, uninstall: false);
         if (!options.DryRun) SaveState(state);
-        if (tools.HasFlag(Tool.Cursor)) Console.WriteLine("Cursor has no portable global skills directory. Run 'agent-harness cursor-rules --print' or 'agent-harness init-project --tools cursor --apply'.");
+        if (tools.HasFlag(Tool.Cursor)) Console.WriteLine("Cursor has no portable global skills directory. Run 'orchestrate cursor-rules --print' or 'orchestrate init-project --tools cursor --apply'.");
         Console.WriteLine($"Install complete: {changes} file change(s){(options.DryRun ? " planned" : "")}. ");
         return 0;
     }
@@ -163,7 +163,7 @@ public sealed class HarnessApp
             var recorded = state.Files[path];
             if (!TryExistingFile(path, out var issue)) { state.Files.Remove(path); continue; }
             if (issue is not null) { Console.WriteLine($"PRESERVE {path}: {issue}"); state.Files.Remove(path); continue; }
-            if (HashFile(path) != recorded) { Console.WriteLine($"PRESERVE {path}: changed since agent-harness installed it."); state.Files.Remove(path); continue; }
+            if (HashFile(path) != recorded) { Console.WriteLine($"PRESERVE {path}: changed since Orchestra installed it."); state.Files.Remove(path); continue; }
             Console.WriteLine($"{(options.DryRun ? "REMOVE" : "REMOVE")} {path}");
             if (!options.DryRun) File.Delete(path);
             state.Files.Remove(path); removed++;
@@ -225,21 +225,21 @@ public sealed class HarnessApp
         if (options.DryRun) { Console.WriteLine($"DRY-RUN: would download the current release for {CurrentRid()} using authenticated GitHub CLI, verify SHA256SUMS, and replace this executable."); return 0; }
         if (RunProcess("gh", new[] { "auth", "status" }, quiet: true) != 0) throw new InvalidOperationException("GitHub CLI authentication is required. Run 'gh auth login' and retry.");
         var self = Environment.ProcessPath ?? throw new InvalidOperationException("Could not determine the running executable path.");
-        var rid = CurrentRid(); var zipName = $"agent-harness-{rid}.zip";
-        var temp = Path.Combine(Path.GetTempPath(), "agent-harness-update-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(temp);
+        var rid = CurrentRid(); var zipName = $"orchestrate-{rid}.zip";
+        var temp = Path.Combine(Path.GetTempPath(), "orchestrate-update-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(temp);
         try
         {
             if (RunProcess("gh", new[] { "release", "download", "--repo", Repository, "--pattern", zipName, "--pattern", "SHA256SUMS", "--dir", temp }) != 0)
-                throw new InvalidOperationException("Release download failed. Confirm this binary's platform asset exists and your GitHub account can access the private repository.");
+                throw new InvalidOperationException("Release download failed. Confirm the release contains this binary's platform asset and retry.");
             var checksums = ChecksumParser.Parse(File.ReadAllText(Path.Combine(temp, "SHA256SUMS")));
             if (!checksums.TryGetValue(zipName, out var expected)) throw new InvalidOperationException($"SHA256SUMS does not contain {zipName}.");
             var zip = Path.Combine(temp, zipName);
             if (!string.Equals(HashFile(zip), expected, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Downloaded release checksum did not match SHA256SUMS; executable was not replaced.");
             ZipFile.ExtractToDirectory(zip, temp, overwriteFiles: true);
-            var candidate = Path.Combine(temp, OperatingSystem.IsWindows() ? "agent-harness.exe" : "agent-harness");
+            var candidate = Path.Combine(temp, OperatingSystem.IsWindows() ? "orchestrate.exe" : "orchestrate");
             if (!File.Exists(candidate)) throw new InvalidOperationException("Release archive did not contain the expected executable.");
             ReplaceSelf(candidate, self);
-            Console.WriteLine("Updated the CLI binary. Run 'agent-harness install --tools ... --dry-run' to preview configuration changes; update never changes configuration automatically.");
+            Console.WriteLine("Updated the CLI binary. Run 'orchestrate install --tools ... --dry-run' to preview configuration changes; update never changes configuration automatically.");
         }
         finally { try { Directory.Delete(temp, true); } catch { } }
         return 0;
