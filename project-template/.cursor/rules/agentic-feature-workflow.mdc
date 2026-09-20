@@ -1,5 +1,5 @@
 ---
-description: Orchestrate non-trivial feature delivery with focused planning, bounded delegation, verification, and review.
+description: Orchestrate non-trivial feature delivery and debugging with focused planning, evidence, bounded delegation, verification, and review.
 alwaysApply: true
 ---
 
@@ -13,12 +13,20 @@ current behavior, resolve material product or architecture choices, create a
 dependency-aware plan with acceptance criteria, and delegate independent
 bounded tasks when agents are available.
 
+For bug reports, failing tests, stack traces, CI failures, or supplied logs,
+use the generated `agentic-debugging` command to reproduce the failure,
+establish root cause, and recommend—or when requested, apply—the smallest
+justified remedy with regression verification.
+
 Use the strongest available model for clarification, planning, architecture,
 integration, and final review. Use faster capable agents for targeted
 exploration, bounded implementation, and verification. Parallel writers must
 have explicit, non-overlapping file ownership. Keep integration with the parent,
 inspect all returned work, run repository checks, and independently review
-non-trivial changes. Treat agent reports as evidence to verify.
+non-trivial changes. Treat agent reports as evidence to verify. Minimize total
+tokens and latency: delegate adaptively, keep work with the parent when a
+handoff would cost more than the task, share only needed context, reuse compact
+findings, and stop obsolete branches early.
 
 Use a proportionate risk tier: make small localized changes directly with a
 targeted check; plan and run deterministic checks for module-level work; use

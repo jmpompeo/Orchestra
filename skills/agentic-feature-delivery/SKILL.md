@@ -5,7 +5,8 @@ description: Plan, delegate, implement, verify, and review a non-trivial softwar
 
 # Agentic feature delivery
 
-Own the complete integrated result in one orchestrated session.
+Own the complete integrated result in one orchestrated session. Minimize total
+tokens and latency without weakening correctness, evidence, or review.
 
 1. Read repository instructions and `docs/agent-context.md` when present.
    Read `docs/harness-evolution.md` when it exists and a recurring failure is
@@ -21,25 +22,31 @@ Own the complete integrated result in one orchestrated session.
    acceptance criteria before changing security, billing, privacy, destructive,
    or production-impacting behaviour.
 5. Explore actual code paths and tests. Delegate focused read-only questions
-   when this protects the parent context or materially reduces latency.
+   when this protects the parent context or materially reduces total tokens or
+   latency.
 6. Build a dependency-aware task graph. Every delegated task must state its
    goal, acceptance criteria, owned scope or files, relevant context,
    constraints, validation command, and return contract.
 7. Parallelize only independent work. Parallel writers must have explicit,
    non-overlapping file ownership. Never overlap shared migration, schema, or
    integration surfaces.
-8. Keep architecture and integration decisions with the parent. Inspect every
+8. Delegate adaptively rather than assigning one agent to every phase. Keep a
+   small localized change with the parent when the handoff would cost more than
+   the work. Give faster capable agents only the context required for a bounded
+   task, reuse compact findings across phases, combine implementation with its
+   focused tests when ownership aligns, and stop obsolete branches early.
+9. Keep architecture and integration decisions with the parent. Inspect every
    returned change and the final diff; subagent reports are not proof.
-9. Run fast deterministic checks before handoff, then the broader checks the
+10. Run fast deterministic checks before handoff, then the broader checks the
    risk tier requires before integration. Use tests, linters, type checks, and
    structural checks as primary feedback; model review complements them.
    Separate new failures from pre-existing or environmental failures.
-10. For behaviour-critical work, use approved fixtures or explicit manual
+11. For behaviour-critical work, use approved fixtures or explicit manual
     acceptance steps. Do not treat agent-authored tests alone as sufficient
     evidence when trusted examples are available.
-11. For non-trivial changes, obtain an independent read-only review, address
+12. For non-trivial changes, obtain an independent read-only review, address
    material findings, and rerun affected checks.
-12. When a pattern has failed at least twice, propose the smallest durable
+13. When a pattern has failed at least twice, propose the smallest durable
     control in `docs/harness-evolution.md`; never record sensitive data or raw
     transcripts. Stop only when acceptance criteria are met or a concrete
     blocker remains.
