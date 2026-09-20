@@ -16,6 +16,12 @@ before handoff. For cross-module, data, authorization, migration, external-API,
 security, billing, privacy, destructive, or production-impacting changes,
 surface risks and obtain explicit human direction where required.
 
+For debugging, reproduce the failure, distinguish facts from hypotheses,
+establish root cause before editing, and recommend—or when requested, apply—the
+smallest justified remedy with regression verification. Use faster capable
+agents only for bounded work when the handoff saves total tokens or latency;
+share only needed context and stop obsolete branches early.
+
 Treat tests, linters, type checks, and structural checks as primary evidence;
 AI review complements them. Preserve unrelated changes. Do not commit, push,
 deploy, merge, publish, alter external systems, or perform destructive actions

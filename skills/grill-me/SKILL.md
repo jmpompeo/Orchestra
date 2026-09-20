@@ -27,7 +27,9 @@ see `LICENSE`.
    outcome, scope and non-goals, settled choices and rationale, constraints,
    risks, acceptance criteria, and remaining unknowns. Ask the user to confirm
    shared understanding.
-7. Only after confirmation, offer to continue with `$agentic-feature-delivery`.
-   Offer to record durable, project-specific decisions in
-   `docs/agent-context.md` or recurring process lessons in
+7. Only after confirmation, return to the originating workflow: offer to resume
+   `$agentic-debugging` with the evidence packet and settled remedy when the
+   interview arose from diagnosis; otherwise offer to continue with
+   `$agentic-feature-delivery`. Offer to record durable, project-specific
+   decisions in `docs/agent-context.md` or recurring process lessons in
    `docs/harness-evolution.md`; never write either without authorization.

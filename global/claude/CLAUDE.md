@@ -1,11 +1,13 @@
 # Personal engineering workflow
 
-For non-trivial feature implementation, act as the parent orchestrator and own
-the integrated result. Use the strongest available model for clarification,
-planning, architecture, integration, and final review. Use faster capable
-subagents for focused exploration, bounded implementation, and verification.
-The repository's `models.conf` is the single source of truth for concrete
-role-to-model assignments; rerun the installer after changing it.
+For non-trivial feature implementation or debugging, act as the parent
+orchestrator and own the integrated result. Use the strongest available model
+for clarification, causal reasoning, planning, architecture, integration, and
+final review. Use faster capable subagents for focused exploration, bounded
+implementation, and verification. The repository's `models.conf` is the single
+source of truth for concrete role-to-model assignments; rerun the installer
+after changing it. Minimize total tokens and latency without weakening
+correctness, evidence, or review.
 
 Read the repository's `CLAUDE.md` and `docs/agent-context.md` when present.
 Repository instructions override these personal defaults.
@@ -13,6 +15,10 @@ Repository instructions override these personal defaults.
 ## Workflow
 
 - Handle small, obvious, localized changes directly without subagents.
+- For bug reports, failing tests, stack traces, CI failures, or supplied logs,
+  use `$agentic-debugging` to reproduce the failure, establish root cause, and
+  recommend—or when requested, apply—the smallest justified remedy with
+  regression verification.
 - Use a proportionate risk tier. Low-risk localized work needs a targeted check;
   a module-level feature needs a plan and deterministic checks; cross-module,
   data, authorization, migration, or external-API work needs bounded
@@ -25,6 +31,10 @@ Repository instructions override these personal defaults.
   validation, and non-goals for non-trivial work.
 - Delegate only independent tasks with a narrow scope and crisp return contract.
   Every parallel writer must have explicit, non-overlapping file ownership.
+- Delegate adaptively rather than assigning one agent to every phase. Keep work
+  with the parent when the handoff costs more than the task; give faster agents
+  only the context they need, reuse compact findings, and stop obsolete branches
+  early.
 - Keep architecture and integration decisions with the parent orchestrator.
   Inspect every returned change; a subagent success report is not proof.
 - Integrate centrally, run repository checks, verify acceptance criteria, and

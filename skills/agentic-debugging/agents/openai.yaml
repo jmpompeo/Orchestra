@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentic Debugging"
+  short_description: "Diagnose and fix bugs with evidence"
+  default_prompt: "Use $agentic-debugging to diagnose this failure, establish its root cause, implement the smallest justified remedy, and verify the regression."
