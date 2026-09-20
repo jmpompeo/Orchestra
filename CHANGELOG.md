@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/jmpompeo/Orchestra/compare/v2.0.0...v2.1.0) (2026-09-20)
+
+
+### Features
+
+* **skills:** add agentic debugging workflow ([#9](https://github.com/jmpompeo/Orchestra/issues/9)) ([d4fbca4](https://github.com/jmpompeo/Orchestra/commit/d4fbca41517b009442602fed2bc409acabcf1aa7))
+
 ## [2.0.0](https://github.com/jmpompeo/Orchestra/compare/v1.0.0...v2.0.0) (2026-09-20)
 
 
