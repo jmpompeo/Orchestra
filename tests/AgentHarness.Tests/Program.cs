@@ -7,20 +7,66 @@ static void Check(bool condition, string message)
     if (!condition) throw new Exception("FAILED: " + message);
 }
 
+static (int ExitCode, string Output, string Error) Capture(HarnessApp app, string[] args)
+{
+    var previousOutput = Console.Out;
+    var previousError = Console.Error;
+    using var output = new StringWriter();
+    using var error = new StringWriter();
+    try
+    {
+        Console.SetOut(output);
+        Console.SetError(error);
+        var exitCode = app.Run(args);
+        return (exitCode, output.ToString(), error.ToString());
+    }
+    finally
+    {
+        Console.SetOut(previousOutput);
+        Console.SetError(previousError);
+    }
+}
+
 var parsed = ToolSelection.Parse("codex, cursor");
 Check(parsed == (Tool.Codex | Tool.Cursor), "tool selection parses comma-separated values");
 Check(ToolSelection.Parse("all") == Tool.All, "all selects every tool");
 var cursor = CursorCommandGenerator.FromSkill("demo", "---\nname: demo\n---\n\n# Workflow\n\nDo work.");
 Check(!cursor.Contains("name: demo", StringComparison.Ordinal), "Cursor command excludes skill front matter");
 Check(cursor.Contains("Do work.", StringComparison.Ordinal), "Cursor command retains skill body");
-var sums = ChecksumParser.Parse(new string('a', 64) + "  agent-harness-osx-arm64.zip\n");
-Check(sums["agent-harness-osx-arm64.zip"] == new string('a', 64), "checksum parser reads a valid manifest");
+var sums = ChecksumParser.Parse(new string('a', 64) + "  orchestrate-osx-arm64.zip\n");
+Check(sums["orchestrate-osx-arm64.zip"] == new string('a', 64), "checksum parser reads a valid manifest");
 
-var root = Path.Combine(Path.GetTempPath(), "agent-harness-tests-" + Guid.NewGuid().ToString("N"));
+var root = Path.Combine(Path.GetTempPath(), "orchestra-tests-" + Guid.NewGuid().ToString("N"));
 var home = Path.Combine(root, "home"); var state = Path.Combine(root, "state"); var project = Path.Combine(root, "project");
 try
 {
     var app = new HarnessApp(home, state);
+    var help = Capture(app, new[] { "--help" });
+    Check(help.ExitCode == 0 && help.Output.Contains("orchestrate", StringComparison.Ordinal), "help uses the orchestrate command name");
+    Check(!help.Output.Contains("agent-harness", StringComparison.Ordinal), "help omits the retired command name");
+    var unknown = Capture(app, new[] { "unknown-command" });
+    Check(unknown.ExitCode == 2 && unknown.Error.Contains("orchestrate --help", StringComparison.Ordinal), "unknown-command guidance uses orchestrate");
+    var previousStateHome = Environment.GetEnvironmentVariable("AGENT_HARNESS_STATE_HOME");
+    var compatibleStateHome = Path.Combine(root, "compatible-state");
+    try
+    {
+        Environment.SetEnvironmentVariable("AGENT_HARNESS_STATE_HOME", compatibleStateHome);
+        var compatibleStatus = Capture(new HarnessApp(home), new[] { "status" });
+        Check(compatibleStatus.Output.Contains(Path.Combine(compatibleStateHome, "state.json"), StringComparison.Ordinal), "legacy state-home override remains supported");
+    }
+    finally { Environment.SetEnvironmentVariable("AGENT_HARNESS_STATE_HOME", previousStateHome); }
+    if (!OperatingSystem.IsWindows())
+    {
+        var previousXdgStateHome = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
+        var xdgStateHome = Path.Combine(root, "xdg-state");
+        try
+        {
+            Environment.SetEnvironmentVariable("XDG_STATE_HOME", xdgStateHome);
+            var compatibleStatus = Capture(new HarnessApp(home), new[] { "status" });
+            Check(compatibleStatus.Output.Contains(Path.Combine(xdgStateHome, "agent-harness", "state.json"), StringComparison.Ordinal), "legacy default state identity remains supported");
+        }
+        finally { Environment.SetEnvironmentVariable("XDG_STATE_HOME", previousXdgStateHome); }
+    }
     Check(app.Run(new[] { "install", "--tools", "codex" }) == 0, "Codex install succeeds in isolated home");
     Check(File.Exists(Path.Combine(home, ".codex", "AGENTS.md")), "Codex instructions installed");
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "agentic-feature-delivery", "SKILL.md")), "Codex skill installed");
@@ -60,7 +106,7 @@ try
     Check(legacy.Run(new[] { "install", "--tools", "codex" }) == 0, "legacy-shaped install is reported without taking ownership");
     Check(legacy.Run(new[] { "uninstall", "--tools", "codex" }) == 0, "legacy-shaped uninstall succeeds");
     Check(File.Exists(legacyInstructions), "matching unowned legacy configuration is preserved");
-    Console.WriteLine("All agent-harness tests passed.");
+    Console.WriteLine("All Orchestra tests passed.");
 }
 finally
 {

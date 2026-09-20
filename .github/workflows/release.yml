@@ -1,4 +1,4 @@
-name: Release agent-harness
+name: Release Orchestra
 
 on:
   push:
@@ -68,6 +68,10 @@ jobs:
           - os: windows-latest
             rid: win-x64
     runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_TAG: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        needs.validate-recovery.outputs.tag_name || needs.prepare-release.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,14 +83,34 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet publish src/AgentHarness/AgentHarness.csproj --configuration Release --runtime ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false --output artifacts/${{ matrix.rid }}
       - if: runner.os != 'Windows'
-        run: cd artifacts/${{ matrix.rid }} && zip ../../agent-harness-${{ matrix.rid }}.zip agent-harness
+        shell: bash
+        run: |
+          if [[ -f "artifacts/${{ matrix.rid }}/orchestrate" ]]; then
+            binary=orchestrate
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$RELEASE_TAG" == "v1.0.0" && -f "artifacts/${{ matrix.rid }}/agent-harness" ]]; then
+            binary=agent-harness
+          else
+            echo "Expected the orchestrate release binary." >&2
+            exit 1
+          fi
+          cd artifacts/${{ matrix.rid }}
+          zip "../../${binary}-${{ matrix.rid }}.zip" "$binary"
       - if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path artifacts/${{ matrix.rid }}/agent-harness.exe -DestinationPath agent-harness-${{ matrix.rid }}.zip
+        run: |
+          if (Test-Path "artifacts/${{ matrix.rid }}/orchestrate.exe") {
+            $binary = "orchestrate"
+          } elseif ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and $env:RELEASE_TAG -eq "v1.0.0" -and (Test-Path "artifacts/${{ matrix.rid }}/agent-harness.exe")) {
+            $binary = "agent-harness"
+          } else {
+            Write-Error "Expected the orchestrate release binary."
+            exit 1
+          }
+          Compress-Archive -Path "artifacts/${{ matrix.rid }}/$binary.exe" -DestinationPath "$binary-${{ matrix.rid }}.zip"
       - uses: actions/upload-artifact@v4
         with:
-          name: agent-harness-${{ matrix.rid }}
-          path: agent-harness-${{ matrix.rid }}.zip
+          name: release-${{ matrix.rid }}
+          path: '*-${{ matrix.rid }}.zip'
   release:
     needs: [prepare-release, validate-recovery, publish]
     if: >-
@@ -99,7 +123,7 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
-      - run: cd release-assets && sha256sum agent-harness-*.zip > SHA256SUMS
+      - run: cd release-assets && sha256sum *.zip > SHA256SUMS
       - env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: >-

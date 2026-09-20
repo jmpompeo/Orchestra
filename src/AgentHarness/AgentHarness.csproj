@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>agent-harness</AssemblyName>
+    <AssemblyName>orchestrate</AssemblyName>
     <RootNamespace>AgentHarness</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
