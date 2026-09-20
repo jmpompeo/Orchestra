@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/jmpompeo/Orchestra/compare/v1.0.0...v2.0.0) (2026-09-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename CLI to Orchestra ([#7](https://github.com/jmpompeo/Orchestra/issues/7))
+
+### Features
+
+* rename CLI to Orchestra ([#7](https://github.com/jmpompeo/Orchestra/issues/7)) ([2957121](https://github.com/jmpompeo/Orchestra/commit/2957121613453daa47a346bc6b4be0ed8384b170))
+
 ## 1.0.0 (2026-09-18)
 
 
