@@ -16,10 +16,6 @@ function Test-StableVersion([string]$Value) {
     return $Value -match '^v\d+\.\d+\.\d+$'
 }
 
-function Get-CurrentUserSid() {
-    return [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-}
-
 function Get-OwnerSid([string]$Path) {
     try {
         $owner = (Get-Acl -LiteralPath $Path).Owner
@@ -28,6 +24,18 @@ function Get-OwnerSid([string]$Path) {
     catch {
         Fail "Could not determine the owner of '$Path'. Choose a user-owned -InstallDir."
     }
+}
+
+function Test-OwnerMatchesCurrentIdentity([string]$Path) {
+    $ownerSid = Get-OwnerSid $Path
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    if ($ownerSid -eq $identity.User.Value) { return $true }
+    # Elevated Windows processes can create files owned by the built-in
+    # Administrators group. Accept only that group, and only when enabled in
+    # the current token; broad group ownership remains unsafe.
+    $administratorsSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-32-544')
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $ownerSid -eq $administratorsSid.Value -and $principal.IsInRole($administratorsSid)
 }
 
 function Test-IsSystemPath([string]$Path) {
@@ -64,7 +72,7 @@ function Assert-NoReparseAncestors([string]$Path) {
     }
 }
 
-function Assert-SafeInstallDirectory([string]$Path, [string]$CurrentSid) {
+function Assert-SafeInstallDirectory([string]$Path) {
     $fullPath = [IO.Path]::GetFullPath($Path)
     if (Test-IsSystemPath $fullPath) {
         Fail "Refusing system install directory '$fullPath'. Use a user-owned -InstallDir, for example `"`$env:LOCALAPPDATA\Programs\Orchestra\bin`"."
@@ -80,8 +88,8 @@ function Assert-SafeInstallDirectory([string]$Path, [string]$CurrentSid) {
     if (Test-IsReparsePoint $fullPath) {
         Fail "Refusing install directory '$fullPath' because it is a reparse point. Choose a real user-owned directory with -InstallDir."
     }
-    if ((Get-OwnerSid $fullPath) -ne $CurrentSid) {
-        Fail "Refusing install directory '$fullPath' because it is not owned by the current user. Choose a user-owned -InstallDir."
+    if (-not (Test-OwnerMatchesCurrentIdentity $fullPath)) {
+        Fail "Refusing install directory '$fullPath' because it is not owned by the current user or the current elevated Administrators identity. Choose a user-controlled -InstallDir."
     }
     try {
         $probe = Join-Path $fullPath ('.orchestra-write-probe-' + [Guid]::NewGuid().ToString('N'))
@@ -94,7 +102,7 @@ function Assert-SafeInstallDirectory([string]$Path, [string]$CurrentSid) {
     return $fullPath
 }
 
-function Assert-SafeTarget([string]$Path, [string]$CurrentSid) {
+function Assert-SafeTarget([string]$Path) {
     $item = Get-ExistingItem $Path
     if ($null -eq $item) { return $false }
     if (Test-IsReparsePoint $Path) {
@@ -103,8 +111,8 @@ function Assert-SafeTarget([string]$Path, [string]$CurrentSid) {
     if (-not ($item -is [IO.FileInfo])) {
         Fail "Refusing '$Path' because it is not a regular file. Remove it manually or choose a different -InstallDir."
     }
-    if ((Get-OwnerSid $Path) -ne $CurrentSid) {
-        Fail "Refusing to replace '$Path' because it is not owned by the current user. Use a user-owned -InstallDir."
+    if (-not (Test-OwnerMatchesCurrentIdentity $Path)) {
+        Fail "Refusing to replace '$Path' because it is not owned by the current user or the current elevated Administrators identity. Use a user-controlled -InstallDir."
     }
     try {
         $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
@@ -151,7 +159,6 @@ if ($architecture -notin @('AMD64', 'x86_64')) {
 
 $rid = 'win-x64'
 $asset = "orchestrate-$rid.zip"
-$currentSid = Get-CurrentUserSid
 $pathCandidates = @(Get-PathCandidates)
 
 if (-not $PSBoundParameters.ContainsKey('InstallDir')) {
@@ -182,9 +189,9 @@ else {
     Write-Host "Installing to explicitly requested path: $(Join-Path $InstallDir 'orchestrate.exe')"
 }
 
-$InstallDir = Assert-SafeInstallDirectory $InstallDir $currentSid
+$InstallDir = Assert-SafeInstallDirectory $InstallDir
 $target = Join-Path $InstallDir 'orchestrate.exe'
-$targetExists = Assert-SafeTarget $target $currentSid
+$targetExists = Assert-SafeTarget $target
 
 $tmpRoot = Join-Path ([IO.Path]::GetTempPath()) ('orchestra-install-' + [Guid]::NewGuid().ToString('N'))
 $staged = $null
@@ -218,11 +225,11 @@ try {
     }
     Write-Host 'Checksum verified.'
 
-    $recheckedInstallDir = Assert-SafeInstallDirectory $InstallDir $currentSid
+    $recheckedInstallDir = Assert-SafeInstallDirectory $InstallDir
     if (-not $recheckedInstallDir.Equals($InstallDir, [StringComparison]::OrdinalIgnoreCase)) {
         Fail "Install directory changed during download. Refusing to install; rerun with a stable user-owned -InstallDir."
     }
-    Assert-SafeTarget $target $currentSid | Out-Null
+    Assert-SafeTarget $target | Out-Null
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [IO.Compression.ZipFile]::OpenRead($zipFile)
     try {
@@ -241,11 +248,11 @@ try {
     finally { $archive.Dispose() }
 
     # Recheck immediately before an atomic same-directory operation.
-    $recheckedInstallDir = Assert-SafeInstallDirectory $InstallDir $currentSid
+    $recheckedInstallDir = Assert-SafeInstallDirectory $InstallDir
     if (-not $recheckedInstallDir.Equals($InstallDir, [StringComparison]::OrdinalIgnoreCase)) {
         Fail "Install directory changed during download. Refusing to install; rerun with a stable user-owned -InstallDir."
     }
-    $targetExists = Assert-SafeTarget $target $currentSid
+    $targetExists = Assert-SafeTarget $target
     if ($targetExists) {
         [IO.File]::Replace($staged, $target, $null)
     }
