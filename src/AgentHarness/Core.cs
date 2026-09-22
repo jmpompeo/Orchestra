@@ -83,12 +83,24 @@ public sealed record StateDocument(int Version, Dictionary<string, string> Files
 
 public sealed class HarnessApp
 {
+    private static readonly HttpClient DefaultHttpClient = new() { Timeout = TimeSpan.FromMinutes(5) };
     private readonly AssetStore _assets = new();
     private readonly string _home;
     private readonly string _statePath;
+    private readonly HttpClient _httpClient;
+    private readonly string? _processPath;
+    private readonly string? _runtimeIdentifier;
+    private readonly Action<string, string> _replaceSelf;
     private const string Repository = "jmpompeo/orchestra";
+    private const string LatestReleaseBaseUrl = $"https://github.com/{Repository}/releases/latest/download/";
 
-    public HarnessApp(string? home = null, string? stateDirectory = null)
+    public HarnessApp(
+        string? home = null,
+        string? stateDirectory = null,
+        HttpClient? httpClient = null,
+        string? processPath = null,
+        string? runtimeIdentifier = null,
+        Action<string, string>? replaceSelf = null)
     {
         _home = home ?? Environment.GetEnvironmentVariable("AGENT_HARNESS_HOME") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var stateRoot = stateDirectory ?? Environment.GetEnvironmentVariable("AGENT_HARNESS_STATE_HOME") ??
@@ -96,6 +108,10 @@ public sealed class HarnessApp
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "agent-harness")
                 : Path.Combine(Environment.GetEnvironmentVariable("XDG_STATE_HOME") ?? Path.Combine(_home, ".local", "state"), "agent-harness"));
         _statePath = Path.Combine(stateRoot, "state.json");
+        _httpClient = httpClient ?? DefaultHttpClient;
+        _processPath = processPath;
+        _runtimeIdentifier = runtimeIdentifier;
+        _replaceSelf = replaceSelf ?? ReplaceSelf;
     }
 
     public int Run(string[] args)
@@ -215,34 +231,53 @@ public sealed class HarnessApp
         Console.WriteLine($"Home: {_home}");
         Console.WriteLine($"State: {_statePath}");
         Console.WriteLine($"Bundled skills: {string.Join(", ", _assets.SkillNames)}");
-        var gh = RunProcess("gh", new[] { "auth", "status" }, quiet: true);
-        Console.WriteLine(gh == 0 ? "GitHub CLI: authenticated" : "GitHub CLI: unavailable or unauthenticated (required only for update).");
+        Console.WriteLine("Release updates: anonymous HTTPS; GitHub CLI authentication is not required.");
         return 0;
     }
 
     private int Update(CliOptions options)
     {
-        if (options.DryRun) { Console.WriteLine($"DRY-RUN: would download the current release for {CurrentRid()} using authenticated GitHub CLI, verify SHA256SUMS, and replace this executable."); return 0; }
-        if (RunProcess("gh", new[] { "auth", "status" }, quiet: true) != 0) throw new InvalidOperationException("GitHub CLI authentication is required. Run 'gh auth login' and retry.");
-        var self = Environment.ProcessPath ?? throw new InvalidOperationException("Could not determine the running executable path.");
-        var rid = CurrentRid(); var zipName = $"orchestrate-{rid}.zip";
+        var rid = _runtimeIdentifier ?? CurrentRid();
+        if (options.DryRun) { Console.WriteLine($"DRY-RUN: would anonymously download the latest stable public release for {rid}, verify SHA256SUMS, and replace this executable."); return 0; }
+        var self = _processPath ?? Environment.ProcessPath ?? throw new InvalidOperationException("Could not determine the running executable path.");
+        var zipName = $"orchestrate-{rid}.zip";
         var temp = Path.Combine(Path.GetTempPath(), "orchestrate-update-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(temp);
         try
         {
-            if (RunProcess("gh", new[] { "release", "download", "--repo", Repository, "--pattern", zipName, "--pattern", "SHA256SUMS", "--dir", temp }) != 0)
-                throw new InvalidOperationException("Release download failed. Confirm the release contains this binary's platform asset and retry.");
-            var checksums = ChecksumParser.Parse(File.ReadAllText(Path.Combine(temp, "SHA256SUMS")));
-            if (!checksums.TryGetValue(zipName, out var expected)) throw new InvalidOperationException($"SHA256SUMS does not contain {zipName}.");
             var zip = Path.Combine(temp, zipName);
+            var manifest = Path.Combine(temp, "SHA256SUMS");
+            DownloadReleaseAsset(zipName, zip);
+            DownloadReleaseAsset("SHA256SUMS", manifest);
+            var checksums = ChecksumParser.Parse(File.ReadAllText(manifest));
+            if (!checksums.TryGetValue(zipName, out var expected)) throw new InvalidOperationException($"SHA256SUMS does not contain {zipName}.");
             if (!string.Equals(HashFile(zip), expected, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Downloaded release checksum did not match SHA256SUMS; executable was not replaced.");
             ZipFile.ExtractToDirectory(zip, temp, overwriteFiles: true);
             var candidate = Path.Combine(temp, OperatingSystem.IsWindows() ? "orchestrate.exe" : "orchestrate");
             if (!File.Exists(candidate)) throw new InvalidOperationException("Release archive did not contain the expected executable.");
-            ReplaceSelf(candidate, self);
+            _replaceSelf(candidate, self);
             Console.WriteLine("Updated the CLI binary. Run 'orchestrate install --tools ... --dry-run' to preview configuration changes; update never changes configuration automatically.");
         }
         finally { try { Directory.Delete(temp, true); } catch { } }
         return 0;
+    }
+
+    private void DownloadReleaseAsset(string assetName, string destination)
+    {
+        var uri = new Uri(LatestReleaseBaseUrl + Uri.EscapeDataString(assetName));
+        try
+        {
+            using var response = _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Could not download {assetName} from {uri} (HTTP {(int)response.StatusCode}). Download the release manually from https://github.com/{Repository}/releases/latest and retry.");
+            using var source = response.Content.ReadAsStream();
+            using var output = File.Create(destination);
+            source.CopyTo(output);
+        }
+        catch (InvalidOperationException) { throw; }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            throw new InvalidOperationException($"Could not download {assetName} from {uri}: {ex.Message} Download the release manually from https://github.com/{Repository}/releases/latest and retry.");
+        }
     }
 
     private void ReplaceSelf(string candidate, string self)
@@ -425,17 +460,6 @@ public sealed class HarnessApp
         if (OperatingSystem.IsWindows() && architecture == Architecture.X64) return "win-x64";
         throw new InvalidOperationException($"No self-contained release asset is available for {RuntimeInformation.OSDescription} / {architecture}.");
     }
-    private static int RunProcess(string file, IReadOnlyList<string> args, bool quiet = false)
-    {
-        try
-        {
-            var info = new ProcessStartInfo(file) { UseShellExecute = false, RedirectStandardOutput = quiet, RedirectStandardError = quiet };
-            foreach (var arg in args) info.ArgumentList.Add(arg);
-            using var process = Process.Start(info);
-            return process is not null && process.WaitForExit(30_000) ? process.ExitCode : 1;
-        }
-        catch { return 1; }
-    }
 }
 
 public sealed record PlannedFile(string Source, string Destination, byte[] Content);
@@ -470,7 +494,8 @@ public static class ChecksumParser
         {
             var parts = line.Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (parts.Length != 2 || parts[0].Length != 64 || !parts[0].All(Uri.IsHexDigit)) throw new ArgumentException($"Invalid SHA-256 manifest entry: {line}");
-            values[parts[1].TrimStart('*')] = parts[0].ToLowerInvariant();
+            var fileName = parts[1].TrimStart('*');
+            if (!values.TryAdd(fileName, parts[0].ToLowerInvariant())) throw new ArgumentException($"Duplicate SHA-256 manifest entry: {fileName}");
         }
         return values;
     }

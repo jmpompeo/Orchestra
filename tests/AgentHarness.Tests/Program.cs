@@ -1,4 +1,6 @@
 using AgentHarness;
+using System.IO.Compression;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -27,6 +29,18 @@ static (int ExitCode, string Output, string Error) Capture(HarnessApp app, strin
     }
 }
 
+static byte[] ReleaseZip(string executableName, byte[] contents)
+{
+    using var memory = new MemoryStream();
+    using (var archive = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = archive.CreateEntry(executableName);
+        using var stream = entry.Open();
+        stream.Write(contents);
+    }
+    return memory.ToArray();
+}
+
 var parsed = ToolSelection.Parse("codex, cursor");
 Check(parsed == (Tool.Codex | Tool.Cursor), "tool selection parses comma-separated values");
 Check(ToolSelection.Parse("all") == Tool.All, "all selects every tool");
@@ -35,17 +49,87 @@ Check(!cursor.Contains("name: demo", StringComparison.Ordinal), "Cursor command 
 Check(cursor.Contains("Do work.", StringComparison.Ordinal), "Cursor command retains skill body");
 var sums = ChecksumParser.Parse(new string('a', 64) + "  orchestrate-osx-arm64.zip\n");
 Check(sums["orchestrate-osx-arm64.zip"] == new string('a', 64), "checksum parser reads a valid manifest");
+try
+{
+    ChecksumParser.Parse(new string('a', 64) + "  duplicate.zip\n" + new string('b', 64) + "  duplicate.zip\n");
+    throw new Exception("FAILED: checksum parser accepted duplicate entries");
+}
+catch (ArgumentException ex)
+{
+    Check(ex.Message.Contains("Duplicate SHA-256 manifest entry", StringComparison.Ordinal), "checksum parser rejects duplicate entries");
+}
 
 var root = Path.Combine(Path.GetTempPath(), "orchestra-tests-" + Guid.NewGuid().ToString("N"));
 var home = Path.Combine(root, "home"); var state = Path.Combine(root, "state"); var project = Path.Combine(root, "project");
 try
 {
+    Directory.CreateDirectory(root);
     var app = new HarnessApp(home, state);
     var help = Capture(app, new[] { "--help" });
     Check(help.ExitCode == 0 && help.Output.Contains("orchestrate", StringComparison.Ordinal), "help uses the orchestrate command name");
     Check(!help.Output.Contains("agent-harness", StringComparison.Ordinal), "help omits the retired command name");
     var unknown = Capture(app, new[] { "unknown-command" });
     Check(unknown.ExitCode == 2 && unknown.Error.Contains("orchestrate --help", StringComparison.Ordinal), "unknown-command guidance uses orchestrate");
+    var doctor = Capture(app, new[] { "doctor" });
+    Check(doctor.ExitCode == 0 && doctor.Output.Contains("anonymous HTTPS", StringComparison.Ordinal) && !doctor.Output.Contains("authenticated", StringComparison.Ordinal), "doctor reports credential-free updates");
+    var dryRunUpdate = Capture(new HarnessApp(home, state, runtimeIdentifier: "test-rid"), new[] { "update", "--dry-run" });
+    Check(dryRunUpdate.ExitCode == 0 && dryRunUpdate.Output.Contains("latest stable public release", StringComparison.Ordinal), "update dry-run describes anonymous stable release download");
+
+    var releaseBinary = "updated orchestra"u8.ToArray();
+    var releaseZip = ReleaseZip(OperatingSystem.IsWindows() ? "orchestrate.exe" : "orchestrate", releaseBinary);
+    var releaseHash = Convert.ToHexString(SHA256.HashData(releaseZip)).ToLowerInvariant();
+    var releaseHandler = new StubHttpHandler(new Dictionary<string, byte[]>
+    {
+        ["orchestrate-test-rid.zip"] = releaseZip,
+        ["SHA256SUMS"] = System.Text.Encoding.UTF8.GetBytes($"{releaseHash}  orchestrate-test-rid.zip\n")
+    });
+    var replacementSelf = Path.Combine(root, "orchestrate-current");
+    File.WriteAllText(replacementSelf, "current orchestra");
+    byte[]? replacementContents = null; string? replacementTarget = null;
+    var updateApp = new HarnessApp(home, state, new HttpClient(releaseHandler), replacementSelf, "test-rid", (candidate, target) =>
+    {
+        replacementContents = File.ReadAllBytes(candidate);
+        replacementTarget = target;
+    });
+    var update = Capture(updateApp, new[] { "update" });
+    Check(update.ExitCode == 0 && replacementContents!.SequenceEqual(releaseBinary) && replacementTarget == replacementSelf, "update verifies and stages the public release executable");
+    Check(releaseHandler.RequestedAssets.SequenceEqual(new[] { "orchestrate-test-rid.zip", "SHA256SUMS" }), "update requests only stable public release assets");
+    Check(releaseHandler.RequestedUris.All(x => x.StartsWith("https://github.com/jmpompeo/orchestra/releases/latest/download/", StringComparison.OrdinalIgnoreCase)), "update uses stable anonymous release URLs");
+
+    var mismatchHandler = new StubHttpHandler(new Dictionary<string, byte[]>
+    {
+        ["orchestrate-test-rid.zip"] = releaseZip,
+        ["SHA256SUMS"] = System.Text.Encoding.UTF8.GetBytes($"{new string('0', 64)}  orchestrate-test-rid.zip\n")
+    });
+    var replacedMismatch = false;
+    var mismatchApp = new HarnessApp(home, state, new HttpClient(mismatchHandler), replacementSelf, "test-rid", (_, _) => replacedMismatch = true);
+    var mismatch = Capture(mismatchApp, new[] { "update" });
+    Check(mismatch.ExitCode == 2 && mismatch.Error.Contains("checksum did not match", StringComparison.Ordinal) && !replacedMismatch, "checksum mismatch never replaces the executable");
+
+    var absentEntryHandler = new StubHttpHandler(new Dictionary<string, byte[]>
+    {
+        ["orchestrate-test-rid.zip"] = releaseZip,
+        ["SHA256SUMS"] = System.Text.Encoding.UTF8.GetBytes($"{releaseHash}  another-platform.zip\n")
+    });
+    var replacedAbsentEntry = false;
+    var absentEntryApp = new HarnessApp(home, state, new HttpClient(absentEntryHandler), replacementSelf, "test-rid", (_, _) => replacedAbsentEntry = true);
+    var absentEntry = Capture(absentEntryApp, new[] { "update" });
+    Check(absentEntry.ExitCode == 2 && absentEntry.Error.Contains("does not contain orchestrate-test-rid.zip", StringComparison.Ordinal) && !replacedAbsentEntry, "missing checksum entry never replaces the executable");
+
+    var duplicateEntryHandler = new StubHttpHandler(new Dictionary<string, byte[]>
+    {
+        ["orchestrate-test-rid.zip"] = releaseZip,
+        ["SHA256SUMS"] = System.Text.Encoding.UTF8.GetBytes($"{releaseHash}  orchestrate-test-rid.zip\n{releaseHash}  orchestrate-test-rid.zip\n")
+    });
+    var replacedDuplicateEntry = false;
+    var duplicateEntryApp = new HarnessApp(home, state, new HttpClient(duplicateEntryHandler), replacementSelf, "test-rid", (_, _) => replacedDuplicateEntry = true);
+    var duplicateEntry = Capture(duplicateEntryApp, new[] { "update" });
+    Check(duplicateEntry.ExitCode == 2 && duplicateEntry.Error.Contains("Duplicate SHA-256 manifest entry", StringComparison.Ordinal) && !replacedDuplicateEntry, "duplicate checksum entry never replaces the executable");
+
+    var missingHandler = new StubHttpHandler(new Dictionary<string, byte[]>());
+    var missingApp = new HarnessApp(home, state, new HttpClient(missingHandler), replacementSelf, "test-rid", (_, _) => throw new Exception("must not replace"));
+    var missing = Capture(missingApp, new[] { "update" });
+    Check(missing.ExitCode == 2 && missing.Error.Contains("Download the release manually", StringComparison.Ordinal), "download failure provides corrective instructions");
     var previousStateHome = Environment.GetEnvironmentVariable("AGENT_HARNESS_STATE_HOME");
     var compatibleStateHome = Path.Combine(root, "compatible-state");
     try
@@ -117,4 +201,20 @@ try
 finally
 {
     if (Directory.Exists(root)) Directory.Delete(root, true);
+}
+
+sealed class StubHttpHandler(IReadOnlyDictionary<string, byte[]> assets) : HttpMessageHandler
+{
+    public List<string> RequestedAssets { get; } = new();
+    public List<string> RequestedUris { get; } = new();
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var asset = Path.GetFileName(request.RequestUri?.AbsolutePath) ?? "";
+        RequestedAssets.Add(asset);
+        RequestedUris.Add(request.RequestUri?.AbsoluteUri ?? "");
+        if (!assets.TryGetValue(asset, out var contents))
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(contents) });
+    }
 }
