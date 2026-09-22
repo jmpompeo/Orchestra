@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/jmpompeo/orchestra/compare/v2.1.0...v2.2.0) (2026-09-22)
+
+
+### Features
+
+* **install:** remove GitHub authentication requirement ([#11](https://github.com/jmpompeo/orchestra/issues/11)) ([69bc896](https://github.com/jmpompeo/orchestra/commit/69bc89631d08026d2926a6fcc58aec2ed71bb73b))
+
 ## [2.1.0](https://github.com/jmpompeo/Orchestra/compare/v2.0.0...v2.1.0) (2026-09-20)
 
 
