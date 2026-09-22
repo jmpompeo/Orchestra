@@ -124,10 +124,29 @@ function Assert-SafeTarget([string]$Path) {
     return $true
 }
 
-function Get-PathCandidates() {
+function Get-NormalizedPathDirectories() {
     $results = @()
     foreach ($entry in ($env:Path -split ';')) {
-        $directory = if ([string]::IsNullOrWhiteSpace($entry)) { (Get-Location).Path } else { $entry }
+        $directory = if ([string]::IsNullOrWhiteSpace($entry)) { (Get-Location).Path } else { $entry.Trim() }
+        if ($directory.Length -ge 2 -and $directory[0] -eq '"' -and $directory[$directory.Length - 1] -eq '"') {
+            $directory = $directory.Substring(1, $directory.Length - 2)
+        }
+        try {
+            $fullDirectory = [IO.Path]::GetFullPath($directory)
+        }
+        catch {
+            # A malformed PATH entry must not turn a successful installation
+            # into a failure or prevent valid entries from being inspected.
+            continue
+        }
+        if ($results -notcontains $fullDirectory) { $results += $fullDirectory }
+    }
+    return @($results)
+}
+
+function Get-PathCandidates() {
+    $results = @()
+    foreach ($directory in (Get-NormalizedPathDirectories)) {
         $candidate = Join-Path $directory 'orchestrate.exe'
         if ($null -ne (Get-ExistingItem $candidate)) {
             $fullCandidate = [IO.Path]::GetFullPath($candidate)
@@ -254,7 +273,7 @@ try {
     }
     $targetExists = Assert-SafeTarget $target
     if ($targetExists) {
-        [IO.File]::Replace($staged, $target, $null)
+        [IO.File]::Replace($staged, $target, [System.Management.Automation.Language.NullString]::Value)
     }
     else {
         [IO.File]::Move($staged, $target)
@@ -266,7 +285,7 @@ finally {
     if ($null -ne $staged -and (Test-Path -LiteralPath $staged)) { Remove-Item -LiteralPath $staged -Force }
 }
 
-$pathEntries = @($env:Path -split ';' | ForEach-Object { [IO.Path]::GetFullPath($(if ([string]::IsNullOrWhiteSpace($_)) { (Get-Location).Path } else { $_ })) })
+$pathEntries = @(Get-NormalizedPathDirectories)
 if ($pathEntries -contains $InstallDir) {
     Write-Host 'Next steps:'
     Write-Host '  orchestrate install --tools codex --dry-run'

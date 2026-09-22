@@ -21,5 +21,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - shell: powershell
+      - name: Windows PowerShell 5.1 installer tests
+        shell: powershell
+        run: .\tests\Installer.Tests\install-ps1-tests.ps1
+      - name: PowerShell 7 installer tests
+        if: always()
+        shell: pwsh
         run: .\tests\Installer.Tests\install-ps1-tests.ps1
