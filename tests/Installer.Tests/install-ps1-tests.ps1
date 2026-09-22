@@ -35,7 +35,7 @@ function global:Invoke-WebRequest {
 function Invoke-Installer([string]$Name, [hashtable]$Parameters) {
     $global:OrchestraTestRequestedUrls.Clear()
     try {
-        $output = (& $Installer @Parameters 2>&1 | Out-String)
+        $output = (& $Installer @Parameters *>&1 | Out-String)
         return [pscustomobject]@{ Name = $Name; Status = 0; Output = $output; Urls = @($global:OrchestraTestRequestedUrls) }
     }
     catch {
