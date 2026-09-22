@@ -14,6 +14,7 @@
 - Configuration assets: `global/` holds personal-tool defaults and agent templates; `skills/` holds portable skills; `project-template/` holds files created by `init-project`.
 - Model assignments: `models.conf` is the single source of truth for model assignments rendered into installed agent definitions.
 - Tests and delivery: `tests/AgentHarness.Tests/` is the executable test suite; `.github/workflows/ci.yml` builds and runs it; `.github/workflows/release.yml` uses Release Please and publishes self-contained platform archives.
+- Distribution: public stable GitHub Releases include `install.sh` and `install.ps1`; installation and self-update use anonymous HTTPS downloads and verify platform archives against `SHA256SUMS`. GitHub CLI credentials are not a user prerequisite.
 
 ## Commands
 
@@ -43,6 +44,7 @@
 - Preserve compatibility boundaries: do not rename internal `AgentHarness` namespaces/projects, `$bootstrap-agent-harness`, `AGENT_HARNESS_*` variables, or the established `agent-harness` state identity unless an approved migration changes them.
 - Approved fixtures: `project-template/docs/approved-fixtures/README.md` defines the fixture convention.
 - Manual acceptance: use `--dry-run` before installation changes; verify an update archive against `SHA256SUMS`; use `--apply` only after reviewing `init-project` output.
+- Bootstrap installers replace only a safe, unambiguous, user-owned executable, never edit PATH or profiles, never install prerequisites or configuration, and must provide corrective instructions when refusing an operation.
 
 ## Engineering constraints
 

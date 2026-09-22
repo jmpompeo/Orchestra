@@ -7,24 +7,58 @@ auditing and maintaining the harness.
 
 ## First-time setup
 
-Authenticate GitHub CLI. Download the archive matching your platform from
-`jmpompeo/orchestra`, verify it with the accompanying `SHA256SUMS`, then place
-the extracted binary on a user-owned directory already on `PATH` (for example
-`~/.local/bin`). No administrator privileges are required.
+No GitHub account, token, GitHub CLI, source clone, or .NET runtime is required.
+Download the installer before running it so you can inspect the script locally.
+
+On macOS or Linux:
 
 ```sh
-gh auth login
-gh release download --repo jmpompeo/orchestra --pattern 'orchestrate-osx-arm64.zip' --pattern SHA256SUMS
-grep 'orchestrate-osx-arm64.zip$' SHA256SUMS | shasum -a 256 -c -
-unzip orchestrate-osx-arm64.zip -d "$HOME/.local/bin"
+curl -fL -o orchestra-install.sh \
+  https://github.com/jmpompeo/orchestra/releases/latest/download/install.sh
+sh orchestra-install.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://github.com/jmpompeo/orchestra/releases/latest/download/install.ps1" `
+  -OutFile "orchestra-install.ps1"
+& ".\orchestra-install.ps1"
+```
+
+If local PowerShell policy blocks the downloaded script, run it with a policy
+override scoped only to that process; this does not change the permanent policy:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\orchestra-install.ps1"
+```
+
+The scripts detect `osx-arm64`, `osx-x64`, `linux-x64`, or `win-x64`, download
+the latest stable public release, and verify its archive against `SHA256SUMS`
+before replacing anything. They install only the executable. Missing tools,
+unsupported platforms, unsafe existing paths, checksum failures, and PATH
+issues stop with corrective instructions.
+
+By default, a new installation goes to `~/.local/bin/orchestrate` on macOS or
+Linux and `%LOCALAPPDATA%\Programs\Orchestra\bin\orchestrate.exe` on Windows.
+The scripts do not modify PATH or shell profiles. Override the destination or
+select a specific stable release when needed:
+
+```sh
+sh orchestra-install.sh --install-dir "$HOME/bin" --version v2.1.0
+```
+
+```powershell
+& ".\orchestra-install.ps1" -InstallDir "$HOME\bin" -Version "v2.1.0"
+```
+
+After the script succeeds, preview and apply the desired configuration:
+
+```sh
 orchestrate install --tools codex --dry-run
 orchestrate install --tools codex
 ```
-
-Available runtime assets are `osx-arm64`, `osx-x64`, `linux-x64`, and `win-x64`.
-On Windows, use `Get-FileHash -Algorithm SHA256` to verify the downloaded ZIP,
-extract `orchestrate.exe` to a user-owned directory on `PATH`, and run it in
-PowerShell.
 
 Without `--tools`, `install` presents an interactive selector. Automation must
 use `--tools codex,claude,cursor` or `--tools all`.
@@ -80,6 +114,19 @@ executable from `PATH`. Existing managed-file state is retained: Orchestra
 keeps the established internal state identity, so already managed files remain
 tracked.
 
+## Upgrading an existing Orchestra installation
+
+The bootstrap scripts detect an existing `orchestrate` on PATH and replace that
+exact executable when its location is unambiguous, writable, regular, and
+user-owned. They never run `orchestrate install`, so existing configuration and
+managed-file state are untouched. Unsafe, linked, system-owned, or ambiguous
+installations are preserved and reported with corrective instructions.
+
+Users of an older release can either run its authenticated `orchestrate update`
+once when GitHub CLI is already configured, or run the new bootstrap script to
+upgrade in place. Releases containing the anonymous updater no longer require
+GitHub CLI or authentication.
+
 ## Updating
 
 ```sh
@@ -87,8 +134,8 @@ orchestrate update
 orchestrate install --tools codex,claude --dry-run
 ```
 
-`update` downloads the matching GitHub Release through authenticated GitHub
-CLI, verifies the ZIP against `SHA256SUMS`, and replaces only the CLI
+`update` anonymously downloads the matching asset from the latest stable public
+GitHub Release, verifies the ZIP against `SHA256SUMS`, and replaces only the CLI
 binary. It never changes configuration automatically. Review the dry run, then
 run `install` if you accept the configuration updates.
 
@@ -146,13 +193,15 @@ minor version, `fix:` for a patch, and `feat!:` or `fix!:` for a major version.
 After merged changes reach `main`, Release Please opens or updates a release
 PR. Merging that PR creates the version tag and GitHub Release; the
 workflow then builds self-contained single-file binaries on the matching macOS,
-Linux, and Windows runners and uploads `SHA256SUMS`. No manual tag creation is
-required. Checksums provide download-integrity verification; Apple notarization
-and Windows code signing remain deferred until protected signing identities are
-available.
+Linux, and Windows runners and uploads the platform archives, `SHA256SUMS`, and
+both bootstrap installers. No manual tag creation is required. Checksums provide
+download-integrity verification but do not protect against compromise of the
+GitHub repository or release account. Apple notarization and Windows code
+signing remain deferred until protected signing identities are available.
 
 If an existing release is missing or has corrupt assets, open **Actions →
 Release Orchestra → Run workflow**, enter its existing tag (for example
 `v1.0.0`), and run it. The recovery path validates that the release exists,
 rebuilds all platform assets from that tag, and replaces only the release
-archives and checksum manifest. It does not create a new version or tag.
+archives, checksum manifest, and bootstrap installers when that tag contains
+them. It does not create a new version or tag.
