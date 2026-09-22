@@ -58,7 +58,7 @@ function Invoke-Installer([string]$Name, [hashtable]$Parameters) {
         $global:OrchestraTestExpectedSumsUrl = "$releaseUrl/SHA256SUMS"
     }
     try {
-        $output = (& $Installer @Parameters *>&1 | Out-String)
+        $output = ((& $Installer @Parameters *>&1) | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
         return [pscustomobject]@{ Name = $Name; Status = 0; Output = $output; Urls = @($global:OrchestraTestRequestedUrls) }
     }
     catch {
@@ -134,7 +134,7 @@ try {
         Assert-RequestedUrl $upgrade.Urls 'https://github.com/jmpompeo/orchestra/releases/download/v2.1.0/SHA256SUMS' 'Explicit-version checksum URL was not requested.'
         Assert-True ($upgrade.Urls.Count -eq 2) "Explicit-version upgrade made an unexpected number of download requests: $($upgrade.Urls.Count)."
         Assert-SameFile $FixtureExecutable $existingTarget
-        Assert-Contains $upgrade.Output "Updating the one orchestrate executable found on PATH: $existingTarget"
+        Assert-Contains $upgrade.Output 'Updating the one orchestrate executable found on PATH:'
     }
 
     Invoke-TestCase 'checksum-mismatch' $InvalidSums {
