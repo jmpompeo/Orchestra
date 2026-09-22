@@ -32,10 +32,10 @@ function global:Invoke-WebRequest {
     }
 }
 
-function Invoke-Installer([string]$Name, [object[]]$Arguments) {
+function Invoke-Installer([string]$Name, [hashtable]$Parameters) {
     $global:OrchestraTestRequestedUrls.Clear()
     try {
-        $output = (& $Installer @Arguments 2>&1 | Out-String)
+        $output = (& $Installer @Parameters 2>&1 | Out-String)
         return [pscustomobject]@{ Name = $Name; Status = 0; Output = $output; Urls = @($global:OrchestraTestRequestedUrls) }
     }
     catch {
@@ -54,7 +54,7 @@ try {
     $newDirectory = Join-Path $TestRoot 'new/bin'
     $global:OrchestraTestSums = $ValidSums
     $env:Path = $OriginalPath
-    $newInstall = Invoke-Installer 'new-install' @('-InstallDir', $newDirectory)
+    $newInstall = Invoke-Installer 'new-install' @{ InstallDir = $newDirectory }
     Assert-True ($newInstall.Status -eq 0) "New install failed: $($newInstall.Output)"
     Assert-SameFile $FixtureExecutable (Join-Path $newDirectory 'orchestrate.exe')
     Assert-Contains $newInstall.Output 'Checksum verified.'
@@ -66,7 +66,7 @@ try {
     $existingTarget = Join-Path $existingDirectory 'orchestrate.exe'
     [IO.File]::WriteAllText($existingTarget, 'old-payload')
     $env:Path = "$existingDirectory;$existingDirectory;$OriginalPath"
-    $upgrade = Invoke-Installer 'upgrade' @('-Version', 'v2.1.0')
+    $upgrade = Invoke-Installer 'upgrade' @{ Version = 'v2.1.0' }
     Assert-True ($upgrade.Status -eq 0) "Existing install upgrade failed: $($upgrade.Output)"
     Assert-SameFile $FixtureExecutable $existingTarget
     Assert-Contains $upgrade.Output "Updating the one orchestrate executable found on PATH: $existingTarget"
@@ -78,7 +78,7 @@ try {
     $beforeHash = (Get-FileHash -LiteralPath $mismatchTarget -Algorithm SHA256).Hash
     $global:OrchestraTestSums = $InvalidSums
     $env:Path = $OriginalPath
-    $mismatch = Invoke-Installer 'mismatch' @('-InstallDir', $mismatchDirectory, '-Version', 'v2.1.0')
+    $mismatch = Invoke-Installer 'mismatch' @{ InstallDir = $mismatchDirectory; Version = 'v2.1.0' }
     Assert-True ($mismatch.Status -eq 1) 'Checksum mismatch unexpectedly succeeded.'
     Assert-Contains $mismatch.Output 'SHA-256 mismatch'
     Assert-True ($beforeHash -eq (Get-FileHash -LiteralPath $mismatchTarget -Algorithm SHA256).Hash) 'Checksum mismatch changed the existing executable.'
@@ -91,13 +91,13 @@ try {
     Copy-Item -LiteralPath $FixtureExecutable -Destination (Join-Path $ambiguousB 'orchestrate.exe')
     $global:OrchestraTestSums = $ValidSums
     $env:Path = "$ambiguousA;$ambiguousB;$OriginalPath"
-    $ambiguous = Invoke-Installer 'ambiguous' @('-Version', 'v2.1.0')
+    $ambiguous = Invoke-Installer 'ambiguous' @{ Version = 'v2.1.0' }
     Assert-True ($ambiguous.Status -eq 1) 'Ambiguous PATH unexpectedly succeeded.'
     Assert-Contains $ambiguous.Output 'Found multiple orchestrate.exe entries on PATH'
     Assert-True ($ambiguous.Urls.Count -eq 0) 'Ambiguous PATH attempted a download.'
 
     $env:Path = $OriginalPath
-    $invalidVersion = Invoke-Installer 'invalid-version' @('-Version', 'v2.bad.0', '-InstallDir', (Join-Path $TestRoot 'invalid/bin'))
+    $invalidVersion = Invoke-Installer 'invalid-version' @{ Version = 'v2.bad.0'; InstallDir = (Join-Path $TestRoot 'invalid/bin') }
     Assert-True ($invalidVersion.Status -eq 1) 'Invalid version unexpectedly succeeded.'
     Assert-Contains $invalidVersion.Output 'stable release tag in the form vX.Y.Z'
     Assert-True ($invalidVersion.Urls.Count -eq 0) 'Invalid version attempted a download.'
