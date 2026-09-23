@@ -47,13 +47,23 @@ public static class ToolSelection
 public sealed class AssetStore
 {
     private const string Prefix = "AgentHarness.Assets/";
-    private readonly Assembly _assembly = typeof(AssetStore).Assembly;
-    public IReadOnlyList<string> Paths => _assembly.GetManifestResourceNames()
-        .Where(x => x.StartsWith(Prefix, StringComparison.Ordinal)).Select(x => x[Prefix.Length..]).Order().ToArray();
+    private readonly Assembly _assembly;
+    private readonly IReadOnlyDictionary<string, string> _resourceNames;
+    public AssetStore()
+    {
+        _assembly = typeof(AssetStore).Assembly;
+        _resourceNames = _assembly.GetManifestResourceNames()
+            .Select(name => (Name: name, Path: name.Replace('\\', '/')))
+            .Where(resource => resource.Path.StartsWith(Prefix, StringComparison.Ordinal))
+            .ToDictionary(resource => resource.Path[Prefix.Length..], resource => resource.Name, StringComparer.Ordinal);
+    }
+    public IReadOnlyList<string> Paths => _resourceNames.Keys.Order(StringComparer.Ordinal).ToArray();
 
     public byte[] ReadBytes(string path)
     {
-        using var stream = _assembly.GetManifestResourceStream(Prefix + path.Replace('\\', '/'))
+        if (!_resourceNames.TryGetValue(path.Replace('\\', '/'), out var resourceName))
+            throw new InvalidOperationException($"Embedded asset not found: {path}");
+        using var stream = _assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded asset not found: {path}");
         using var memory = new MemoryStream(); stream.CopyTo(memory); return memory.ToArray();
     }
