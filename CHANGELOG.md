@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/jmpompeo/orchestra/compare/v2.3.0...v2.3.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **models:** default Codex roles to GPT-6 Sol and Luna ([#15](https://github.com/jmpompeo/orchestra/issues/15)) ([3a30f43](https://github.com/jmpompeo/orchestra/commit/3a30f437c30ebf0cafc67946f4fb89a9db64de18))
+
 ## [2.3.0](https://github.com/jmpompeo/orchestra/compare/v2.2.0...v2.3.0) (2026-09-23)
 
 
