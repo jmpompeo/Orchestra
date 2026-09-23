@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/jmpompeo/orchestra/compare/v2.2.0...v2.3.0) (2026-09-23)
+
+
+### Features
+
+* **skills:** add behavior-preserving refactor workflow ([#13](https://github.com/jmpompeo/orchestra/issues/13)) ([1934db5](https://github.com/jmpompeo/orchestra/commit/1934db57b40e6a4d63ca5ea410999b15e2b4863b))
+
 ## [2.2.0](https://github.com/jmpompeo/orchestra/compare/v2.1.0...v2.2.0) (2026-09-22)
 
 
