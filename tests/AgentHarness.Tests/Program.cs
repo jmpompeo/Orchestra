@@ -156,6 +156,8 @@ try
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "agentic-feature-delivery", "SKILL.md")), "Codex skill installed");
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "agentic-debugging", "SKILL.md")), "agentic-debugging skill installed");
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "grill-me", "SKILL.md")), "grill-me skill installed");
+    Check(File.Exists(Path.Combine(home, ".agents", "skills", "refactor-code", "SKILL.md")), "refactor-code skill installed");
+    Check(File.Exists(Path.Combine(home, ".agents", "skills", "refactor-code", "agents", "openai.yaml")), "refactor-code Codex metadata installed");
     Check(app.Run(new[] { "install", "--tools", "codex" }) == 0, "repeat install is a no-op");
     var instructions = Path.Combine(home, ".codex", "AGENTS.md");
     File.WriteAllText(instructions, "personal change");
@@ -174,6 +176,8 @@ try
     Check(Directory.GetFiles(home, "*", SearchOption.AllDirectories).Length == before, "dry run does not create Claude files");
     Check(app.Run(new[] { "install", "--tools", "claude" }) == 0, "Claude install succeeds in isolated home");
     Check(File.Exists(Path.Combine(home, ".claude", "skills", "agentic-debugging", "SKILL.md")), "Claude agentic-debugging skill installed");
+    Check(File.Exists(Path.Combine(home, ".claude", "skills", "refactor-code", "SKILL.md")), "Claude refactor-code skill installed");
+    Check(!File.Exists(Path.Combine(home, ".claude", "skills", "refactor-code", "agents", "openai.yaml")), "Claude excludes refactor-code Codex metadata");
     Directory.CreateDirectory(project); var previous = Directory.GetCurrentDirectory(); Directory.SetCurrentDirectory(project);
     try
     {
@@ -181,10 +185,15 @@ try
         Check(!Directory.Exists(Path.Combine(project, ".cursor")), "project preview does not write");
         Check(app.Run(new[] { "init-project", "--tools", "cursor", "--apply" }) == 0, "Cursor project apply succeeds");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")), "Cursor command generated");
+        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")).Contains("clean working tree", StringComparison.Ordinal), "Cursor feature command retains Git gate");
+        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")).Contains("reviewable draft or diff", StringComparison.Ordinal), "Cursor feature command retains refactor audit sequencing");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "agentic-debugging.md")), "Cursor agentic-debugging command generated");
         Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "agentic-debugging.md")).Contains("compact evidence ledger", StringComparison.Ordinal), "Cursor agentic-debugging command retains workflow body");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "grill-me.md")), "Cursor grill-me command generated");
         Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "grill-me.md")).Contains("resume\n   `$agentic-debugging`", StringComparison.Ordinal), "Cursor grill-me command returns to debugging workflow");
+        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "grill-me.md")).Contains("resume `$refactor-code`", StringComparison.Ordinal), "Cursor grill-me command returns to refactor workflow");
+        Check(File.Exists(Path.Combine(project, ".cursor", "commands", "refactor-code.md")), "Cursor refactor-code command generated");
+        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "refactor-code.md")).Contains("explicit writable-file allowlist", StringComparison.Ordinal), "Cursor refactor-code command retains scope gate");
     }
     finally { Directory.SetCurrentDirectory(previous); }
     Check(app.Run(new[] { "uninstall", "--tools", "codex" }) == 0, "uninstall succeeds");
