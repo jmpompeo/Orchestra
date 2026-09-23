@@ -79,7 +79,8 @@ paste the result into Cursor Settings → Rules → User Rules.
 Bundled workflows include `$agentic-debugging` for evidence-driven diagnosis,
 root-cause fixes, and regression verification; `$grill-me` for resolving
 non-trivial choices after investigation or before feature implementation;
-`$agentic-feature-delivery` for executing an approved feature; and
+`$agentic-feature-delivery` for executing an approved feature; `$refactor-code`
+for behaviour-preserving structural improvements and scoped smell audits; and
 `$bootstrap-agent-harness` for adopting the framework in an existing
 repository.
 
