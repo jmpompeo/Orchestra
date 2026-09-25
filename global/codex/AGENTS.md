@@ -28,6 +28,11 @@ present. Repository instructions override these personal defaults.
 - For ambiguous or cross-cutting work, clarify outcomes before editing. Resolve
   only decisions that materially affect behavior, architecture, risk, cost, or
   destructive scope with the user.
+- When work changes shape, continue in the same task with the appropriate skill.
+  Carry a concise handoff: current goal and authorization, confirmed evidence
+  and checks, settled decisions and constraints, and remaining work. Reuse that
+  context instead of repeating discovery or requesting authorization already
+  given. A skill transition never expands the approved edit scope by itself.
 - Explore actual behavior, tests, conventions, and constraints before planning.
 - For non-trivial work, create a dependency-aware plan with acceptance criteria,
   likely files, validation, and explicit non-goals.

@@ -22,6 +22,11 @@ smallest justified remedy with regression verification. Use faster capable
 agents only for bounded work when the handoff saves total tokens or latency;
 share only needed context and stop obsolete branches early.
 
+When work changes shape, continue in the same task with the appropriate
+workflow. Carry the goal and authorization, confirmed evidence and checks,
+settled decisions and constraints, and remaining work. Reuse this context;
+switching workflows does not expand the approved edit scope.
+
 Treat tests, linters, type checks, and structural checks as primary evidence;
 AI review complements them. Preserve unrelated changes. Do not commit, push,
 deploy, merge, publish, alter external systems, or perform destructive actions

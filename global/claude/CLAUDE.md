@@ -26,6 +26,11 @@ Repository instructions override these personal defaults.
   or production-impacting work also needs explicit human acceptance criteria.
 - For ambiguous or cross-cutting work, resolve material product and architecture
   choices before editing.
+- When work changes shape, continue in the same task with the appropriate skill.
+  Carry a concise handoff: current goal and authorization, confirmed evidence
+  and checks, settled decisions and constraints, and remaining work. Reuse that
+  context instead of repeating discovery or requesting authorization already
+  given. A skill transition never expands the approved edit scope by itself.
 - Explore actual behavior, tests, conventions, and constraints before planning.
 - Create a dependency-aware plan with acceptance criteria, affected areas,
   validation, and non-goals for non-trivial work.

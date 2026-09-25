@@ -67,6 +67,18 @@ tokens and latency without weakening correctness, evidence, or review.
     transcripts. Stop only when acceptance criteria are met or a concrete
     blocker remains.
 
+## Skill transitions
+
+Keep the same task and plan when another skill becomes appropriate. If a
+separate, pre-existing defect needs diagnosis, pass the symptom, reproduction,
+confirmed evidence, authorization, and unfinished feature work to
+`$agentic-debugging`; use its result when resuming this workflow. If material
+choices need an interview, pass the open decisions and known constraints to
+`$grill-me`, then resume with its confirmed decisions. For a later standalone
+cleanup, pass observable invariants and the requested file scope to
+`$refactor-code`. Do not treat a transition as permission to expand scope or
+repeat settled discovery.
+
 Do not commit unless the user requests it. Never push, deploy, merge, publish,
 modify external systems, or perform destructive actions unless the user
 explicitly authorizes the exact action.

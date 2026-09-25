@@ -35,3 +35,8 @@ see `LICENSE`.
    durable, project-specific decisions in `docs/agent-context.md` or recurring
    process lessons in `docs/harness-evolution.md`; never write either without
    authorization.
+
+Carry the confirmed decision summary, existing authorization, prior evidence,
+and unfinished work back into the originating workflow in the same task. Do
+not reopen settled questions or treat the interview as permission for edits
+outside the original scope.

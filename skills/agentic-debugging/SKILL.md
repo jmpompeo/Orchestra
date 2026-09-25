@@ -68,6 +68,17 @@ confidence; do not trade correctness for a smaller transcript.
     independent read-only review and address material findings. Distinguish new
     failures from pre-existing or environmental ones.
 
+## Skill transitions
+
+Keep the same task and carry a short evidence packet when the remedy needs a
+different workflow: symptom and reproduction, confirmed facts and checks,
+root-cause confidence, authorization, constraints, and remaining work. Use
+`$grill-me` for unsettled material decisions, then resume here with its
+confirmed choices. Use `$agentic-feature-delivery` when the requested outcome
+becomes a broader feature; use `$refactor-code` only for separately requested
+behavior-preserving cleanup, with its required file scope and baseline tests.
+Do not infer permission for new edits from a skill transition.
+
 Finish with one concise handoff: outcome, reproduction, root cause and evidence,
 remedy, files changed, regression coverage, exact verification results, review
 findings, unresolved uncertainty, checks not run with reasons, and required

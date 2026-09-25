@@ -62,6 +62,14 @@ ceremony.
 9. Return a concise handoff with changed files, invariants, baseline and final
    evidence, review findings, accepted gaps, and residual risk.
 
+If a test exposes a defect or the requested change requires different
+observable behavior, stop refactor edits. Continue in the same task with
+`$agentic-debugging` for a defect or `$agentic-feature-delivery` for a new
+behavioral outcome. Carry the failing check, observable invariants, file
+allowlist, authorization, and work still pending. Resume refactoring only when
+the behavior baseline and writable-file scope are settled; switching skills
+does not grant permission to edit additional files.
+
 ## Audit feature work
 
 1. Accept an exact list of affected methods or functions from the parent
