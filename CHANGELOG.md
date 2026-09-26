@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/jmpompeo/orchestra/compare/v2.4.0...v2.4.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **models:** render configured agent models ([#23](https://github.com/jmpompeo/orchestra/issues/23)) ([797eba8](https://github.com/jmpompeo/orchestra/commit/797eba889d4edd57a692cf04a61805aa3b8dc7f8))
+
 ## [2.4.0](https://github.com/jmpompeo/orchestra/compare/v2.3.2...v2.4.0) (2026-09-26)
 
 
