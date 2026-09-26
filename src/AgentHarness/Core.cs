@@ -216,7 +216,7 @@ public sealed class HarnessApp
     private int CursorRules(CliOptions options)
     {
         if (!options.Print) throw new ArgumentException("cursor-rules requires --print.");
-        var text = _assets.ReadText("global/cursor/USER_RULES.md");
+        var text = RenderWorkflowPolicy(_assets.ReadText("global/cursor/USER_RULES.md"));
         var start = text.IndexOf("```", StringComparison.Ordinal);
         var end = start >= 0 ? text.IndexOf("```", start + 3, StringComparison.Ordinal) : -1;
         Console.WriteLine(start >= 0 && end > start ? text[(text.IndexOf('\n', start) + 1)..end].Trim() : text.Trim());
@@ -306,13 +306,13 @@ public sealed class HarnessApp
         var list = new List<PlannedFile>();
         if (tools.HasFlag(Tool.Codex))
         {
-            AddAsset(list, "global/codex/AGENTS.md", Path.Combine(_home, ".codex", "AGENTS.md"));
+            AddWorkflowAsset(list, "global/codex/AGENTS.md", Path.Combine(_home, ".codex", "AGENTS.md"));
             AddTemplates(list, "global/codex/agents/", Path.Combine(_home, ".codex", "agents"), ".toml.tmpl");
             AddSkills(list, Path.Combine(_home, ".agents", "skills"), claude: false);
         }
         if (tools.HasFlag(Tool.Claude))
         {
-            AddAsset(list, "global/claude/CLAUDE.md", Path.Combine(_home, ".claude", "CLAUDE.md"));
+            AddWorkflowAsset(list, "global/claude/CLAUDE.md", Path.Combine(_home, ".claude", "CLAUDE.md"));
             AddTemplates(list, "global/claude/agents/", Path.Combine(_home, ".claude", "agents"), ".md.tmpl");
             AddSkills(list, Path.Combine(_home, ".claude", "skills"), claude: true);
         }
@@ -330,7 +330,7 @@ public sealed class HarnessApp
         if (tools.HasFlag(Tool.Claude)) Add("project-template/CLAUDE.md", Path.Combine(project, "CLAUDE.md"));
         if (tools.HasFlag(Tool.Cursor))
         {
-            Add("project-template/.cursor/rules/agentic-feature-workflow.mdc", Path.Combine(project, ".cursor", "rules", "agentic-feature-workflow.mdc"));
+            AddWorkflowAsset(list, "project-template/.cursor/rules/agentic-feature-workflow.mdc", Path.Combine(project, ".cursor", "rules", "agentic-feature-workflow.mdc"));
             foreach (var skill in _assets.SkillNames)
             {
                 var output = CursorCommandGenerator.FromSkill(skill, _assets.ReadText($"skills/{skill}/SKILL.md"));
@@ -359,6 +359,14 @@ public sealed class HarnessApp
         }
     }
     private void AddAsset(List<PlannedFile> list, string source, string destination) => list.Add(new PlannedFile(source, destination, _assets.ReadBytes(source)));
+    private void AddWorkflowAsset(List<PlannedFile> list, string source, string destination) =>
+        list.Add(new PlannedFile(source, destination, Encoding.UTF8.GetBytes(RenderWorkflowPolicy(_assets.ReadText(source)))));
+    private string RenderWorkflowPolicy(string text)
+    {
+        const string marker = "{{WORKFLOW_POLICY}}";
+        if (!text.Contains(marker, StringComparison.Ordinal)) throw new InvalidOperationException("Workflow policy marker missing from target asset.");
+        return text.Replace(marker, _assets.ReadText("global/shared/workflow-policy.md").Trim(), StringComparison.Ordinal);
+    }
     private string RenderModels(string text)
     {
         foreach (var line in _assets.ReadText("models.conf").Split('\n'))

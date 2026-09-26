@@ -17,15 +17,9 @@ tokens and latency without weakening correctness, evidence, or review.
    constraints, non-goals, edge cases, and acceptance criteria. Ask only about
    decisions that materially change behavior, architecture, risk, cost, or
    destructive scope.
-4. Before implementation, require a Git repository, a clean working tree, and
-   an attached HEAD unless the user explicitly opts out for this task. Show the
-   current branch and short HEAD, ask the user to confirm the intended base and
-   supply the working branch name, then create or switch to that branch. If an
-   existing branch diverges from the confirmed base, disclose that and ask
-   before switching. Recheck the resulting branch and HEAD. Without an explicit
-   opt-out, stop on dirty, non-Git, detached, or unexpected state. With one,
-   record the exact exception and user-confirmed starting state. Never stash,
-   discard, clean, or switch implicitly.
+4. Before the task's first repository edit, satisfy the shared Git branch
+   preflight in the always-on workflow policy. Carry the verified branch
+   through skill transitions.
 5. Assign a risk tier: localized, module-level, cross-cutting, or
    high-consequence. For high-consequence work, obtain explicit human
    acceptance criteria before changing security, billing, privacy, destructive,
@@ -46,11 +40,12 @@ tokens and latency without weakening correctness, evidence, or review.
    focused tests when ownership aligns, and stop obsolete branches early.
 10. Once a reviewable draft or diff exists, launch the lowest-cost capable
     read-only subagent in parallel with validation or review using
-    `$refactor-code` audit mode. Scope it to the affected methods or functions
-    and minimum context, never the whole file by default. Implementation,
-    validation, and review must not depend on its completion, but collect its
-    result before the final handoff. Report pre-existing smells without fixing
-    them; route issues introduced by the feature through normal review.
+    the refactor-code skill in audit mode. Scope it to the affected methods or
+    functions and minimum context, never the whole file by default.
+    Implementation, validation, and review must not depend on its completion,
+    but collect its result before the final handoff. Report pre-existing smells
+    without fixing them; route issues introduced by the feature through normal
+    review.
 11. Keep architecture and integration decisions with the parent. Inspect every
    returned change and the final diff; subagent reports are not proof.
 12. Run fast deterministic checks before handoff, then the broader checks the
@@ -66,6 +61,21 @@ tokens and latency without weakening correctness, evidence, or review.
     control in `docs/harness-evolution.md`; never record sensitive data or raw
     transcripts. Stop only when acceptance criteria are met or a concrete
     blocker remains.
+
+## Skill transitions
+
+This is the primary workflow for a feature task. Keep the feature goal and plan
+when a temporary detour is needed. If a bug surfaces during implementation,
+use the agentic-debugging skill to diagnose and resolve it within the existing
+authorization, then return here. Use the grill-me skill for unsettled material
+decisions and return with the confirmed choices. Necessary structural edits
+remain part of this feature; a later, separately requested cleanup can make
+refactor-code the primary workflow. The read-only refactor audit above is a
+subagent review, not a workflow switch. Carry the goal, authorization,
+evidence, decisions, constraints, and remaining work through each detour.
+Announce a clear transition briefly, return automatically when its purpose is
+met, and ask only about new material decisions or scope. Do not repeat settled
+discovery or expand edit permission during a transition.
 
 Do not commit unless the user requests it. Never push, deploy, merge, publish,
 modify external systems, or perform destructive actions unless the user

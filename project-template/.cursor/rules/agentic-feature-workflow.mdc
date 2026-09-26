@@ -13,10 +13,7 @@ current behavior, resolve material product or architecture choices, create a
 dependency-aware plan with acceptance criteria, and delegate independent
 bounded tasks when agents are available.
 
-For bug reports, failing tests, stack traces, CI failures, or supplied logs,
-use the generated `agentic-debugging` command to reproduce the failure,
-establish root cause, and recommend—or when requested, apply—the smallest
-justified remedy with regression verification.
+{{WORKFLOW_POLICY}}
 
 Use the strongest available model for clarification, planning, architecture,
 integration, and final review. Use faster capable agents for targeted
