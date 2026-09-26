@@ -55,9 +55,8 @@ confidence; do not trade correctness for a smaller transcript.
 8. Select the smallest remedy that addresses the cause and preserves stated
    invariants. When diagnosis exposes meaningful behavior choices,
    compatibility tradeoffs, or a risky architectural remedy, give the user the
-   evidence packet and explicitly ask whether to run `$grill-me` or skip it and
-   continue with the recommended remedy. Bypass this prompt for an obvious,
-   localized fix.
+   evidence packet and use the grill-me skill to settle those material
+   decisions. Continue directly for an obvious, localized fix.
 9. Implement only when the user requested a fix, the evidence supports the
    remedy, and the required decisions are settled. Add regression coverage that
    fails for the original cause and passes with the remedy when practical.
@@ -70,14 +69,19 @@ confidence; do not trade correctness for a smaller transcript.
 
 ## Skill transitions
 
-Keep the same task and carry a short evidence packet when the remedy needs a
-different workflow: symptom and reproduction, confirmed facts and checks,
-root-cause confidence, authorization, constraints, and remaining work. Use
-`$grill-me` for unsettled material decisions, then resume here with its
-confirmed choices. Use `$agentic-feature-delivery` when the requested outcome
-becomes a broader feature; use `$refactor-code` only for separately requested
-behavior-preserving cleanup, with its required file scope and baseline tests.
-Do not infer permission for new edits from a skill transition.
+This is the primary workflow for a bug task and a temporary detour when a bug
+surfaces during another task. Keep the originating goal, authorization,
+evidence, decisions, constraints, and remaining work. Use the grill-me skill
+for unsettled material decisions, then return here with its confirmed choices.
+When a feature introduced the bug, finish the diagnosis and authorized remedy,
+then return to agentic-feature-delivery automatically. Necessary structural
+edits to fix a confirmed cause remain in debugging. A new behavioral outcome
+can make agentic-feature-delivery the primary workflow only when the user's
+scope supports it; separately requested behavior-preserving cleanup can make
+refactor-code primary. Announce clear transitions briefly and ask only about
+new material decisions or scope. Do not infer permission for new edits from a
+skill transition; satisfy the shared Git branch preflight before the task's
+first repository edit.
 
 Finish with one concise handoff: outcome, reproduction, root cause and evidence,
 remedy, files changed, regression coverage, exact verification results, review

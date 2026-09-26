@@ -12,14 +12,12 @@ total tokens and latency without weakening correctness, evidence, or review.
 Read the repository's nearest `AGENTS.md` and `docs/agent-context.md` when
 present. Repository instructions override these personal defaults.
 
+{{WORKFLOW_POLICY}}
+
 ## Execution policy
 
 - Classify the task before adding process. Handle small, obvious, localized
   changes directly without subagents.
-- For bug reports, failing tests, stack traces, CI failures, or supplied logs,
-  use `$agentic-debugging` to reproduce the failure, establish root cause, and
-  recommend—or when requested, apply—the smallest justified remedy with
-  regression verification.
 - Use a proportionate risk tier. Low-risk localized work needs a targeted check;
   a module-level feature needs a plan and deterministic checks; cross-module,
   data, authorization, migration, or external-API work needs bounded
@@ -28,11 +26,6 @@ present. Repository instructions override these personal defaults.
 - For ambiguous or cross-cutting work, clarify outcomes before editing. Resolve
   only decisions that materially affect behavior, architecture, risk, cost, or
   destructive scope with the user.
-- When work changes shape, continue in the same task with the appropriate skill.
-  Carry a concise handoff: current goal and authorization, confirmed evidence
-  and checks, settled decisions and constraints, and remaining work. Reuse that
-  context instead of repeating discovery or requesting authorization already
-  given. A skill transition never expands the approved edit scope by itself.
 - Explore actual behavior, tests, conventions, and constraints before planning.
 - For non-trivial work, create a dependency-aware plan with acceptance criteria,
   likely files, validation, and explicit non-goals.
