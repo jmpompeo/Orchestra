@@ -47,13 +47,23 @@ public static class ToolSelection
 public sealed class AssetStore
 {
     private const string Prefix = "AgentHarness.Assets/";
-    private readonly Assembly _assembly = typeof(AssetStore).Assembly;
-    public IReadOnlyList<string> Paths => _assembly.GetManifestResourceNames()
-        .Where(x => x.StartsWith(Prefix, StringComparison.Ordinal)).Select(x => x[Prefix.Length..]).Order().ToArray();
+    private readonly Assembly _assembly;
+    private readonly IReadOnlyDictionary<string, string> _resourceNames;
+    public AssetStore()
+    {
+        _assembly = typeof(AssetStore).Assembly;
+        _resourceNames = _assembly.GetManifestResourceNames()
+            .Select(name => (Name: name, Path: name.Replace('\\', '/')))
+            .Where(resource => resource.Path.StartsWith(Prefix, StringComparison.Ordinal))
+            .ToDictionary(resource => resource.Path[Prefix.Length..], resource => resource.Name, StringComparer.Ordinal);
+    }
+    public IReadOnlyList<string> Paths => _resourceNames.Keys.Order(StringComparer.Ordinal).ToArray();
 
     public byte[] ReadBytes(string path)
     {
-        using var stream = _assembly.GetManifestResourceStream(Prefix + path.Replace('\\', '/'))
+        if (!_resourceNames.TryGetValue(path.Replace('\\', '/'), out var resourceName))
+            throw new InvalidOperationException($"Embedded asset not found: {path}");
+        using var stream = _assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded asset not found: {path}");
         using var memory = new MemoryStream(); stream.CopyTo(memory); return memory.ToArray();
     }
@@ -206,7 +216,7 @@ public sealed class HarnessApp
     private int CursorRules(CliOptions options)
     {
         if (!options.Print) throw new ArgumentException("cursor-rules requires --print.");
-        var text = _assets.ReadText("global/cursor/USER_RULES.md");
+        var text = RenderWorkflowPolicy(_assets.ReadText("global/cursor/USER_RULES.md"));
         var start = text.IndexOf("```", StringComparison.Ordinal);
         var end = start >= 0 ? text.IndexOf("```", start + 3, StringComparison.Ordinal) : -1;
         Console.WriteLine(start >= 0 && end > start ? text[(text.IndexOf('\n', start) + 1)..end].Trim() : text.Trim());
@@ -296,13 +306,13 @@ public sealed class HarnessApp
         var list = new List<PlannedFile>();
         if (tools.HasFlag(Tool.Codex))
         {
-            AddAsset(list, "global/codex/AGENTS.md", Path.Combine(_home, ".codex", "AGENTS.md"));
+            AddWorkflowAsset(list, "global/codex/AGENTS.md", Path.Combine(_home, ".codex", "AGENTS.md"));
             AddTemplates(list, "global/codex/agents/", Path.Combine(_home, ".codex", "agents"), ".toml.tmpl");
             AddSkills(list, Path.Combine(_home, ".agents", "skills"), claude: false);
         }
         if (tools.HasFlag(Tool.Claude))
         {
-            AddAsset(list, "global/claude/CLAUDE.md", Path.Combine(_home, ".claude", "CLAUDE.md"));
+            AddWorkflowAsset(list, "global/claude/CLAUDE.md", Path.Combine(_home, ".claude", "CLAUDE.md"));
             AddTemplates(list, "global/claude/agents/", Path.Combine(_home, ".claude", "agents"), ".md.tmpl");
             AddSkills(list, Path.Combine(_home, ".claude", "skills"), claude: true);
         }
@@ -320,7 +330,7 @@ public sealed class HarnessApp
         if (tools.HasFlag(Tool.Claude)) Add("project-template/CLAUDE.md", Path.Combine(project, "CLAUDE.md"));
         if (tools.HasFlag(Tool.Cursor))
         {
-            Add("project-template/.cursor/rules/agentic-feature-workflow.mdc", Path.Combine(project, ".cursor", "rules", "agentic-feature-workflow.mdc"));
+            AddWorkflowAsset(list, "project-template/.cursor/rules/agentic-feature-workflow.mdc", Path.Combine(project, ".cursor", "rules", "agentic-feature-workflow.mdc"));
             foreach (var skill in _assets.SkillNames)
             {
                 var output = CursorCommandGenerator.FromSkill(skill, _assets.ReadText($"skills/{skill}/SKILL.md"));
@@ -349,6 +359,14 @@ public sealed class HarnessApp
         }
     }
     private void AddAsset(List<PlannedFile> list, string source, string destination) => list.Add(new PlannedFile(source, destination, _assets.ReadBytes(source)));
+    private void AddWorkflowAsset(List<PlannedFile> list, string source, string destination) =>
+        list.Add(new PlannedFile(source, destination, Encoding.UTF8.GetBytes(RenderWorkflowPolicy(_assets.ReadText(source)))));
+    private string RenderWorkflowPolicy(string text)
+    {
+        const string marker = "{{WORKFLOW_POLICY}}";
+        if (!text.Contains(marker, StringComparison.Ordinal)) throw new InvalidOperationException("Workflow policy marker missing from target asset.");
+        return text.Replace(marker, _assets.ReadText("global/shared/workflow-policy.md").Trim(), StringComparison.Ordinal);
+    }
     private string RenderModels(string text)
     {
         foreach (var line in _assets.ReadText("models.conf").Split('\n'))

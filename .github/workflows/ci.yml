@@ -21,6 +21,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Claude install dry run
+        run: dotnet run --project src/AgentHarness/AgentHarness.csproj --configuration Release -- install --tools claude --dry-run
       - name: Windows PowerShell 5.1 installer tests
         shell: powershell
         run: .\tests\Installer.Tests\install-ps1-tests.ps1

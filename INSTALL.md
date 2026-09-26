@@ -76,6 +76,16 @@ generated from each canonical `SKILL.md`, excluding Codex-only agent metadata.
 For a personal Cursor baseline, run `orchestrate cursor-rules --print` and
 paste the result into Cursor Settings → Rules → User Rules.
 
+The shared workflow policy requires a Git repository, clean working tree,
+attached HEAD, and an agreed base and working branch before any repository
+edit. If a base or branch was not supplied, the agent proposes one and waits
+for confirmation. Once verified, the branch carries through skill detours.
+Feature work uses `agentic-feature-delivery`, defects use `agentic-debugging`,
+and standalone behaviour-preserving cleanup uses `refactor-code`. `grill-me`
+and `bootstrap-agent-harness` support the active workflow, which resumes
+afterward; a read-only refactor audit during feature work does not switch the
+primary workflow.
+
 Bundled workflows include `$agentic-debugging` for evidence-driven diagnosis,
 root-cause fixes, and regression verification; `$grill-me` for resolving
 non-trivial choices after investigation or before feature implementation;
@@ -152,6 +162,33 @@ orchestrate init-project --tools codex,claude,cursor --apply
 The first command is preview-only. `--apply` creates missing selected-tool
 files only; existing instructions, rules, and docs are conflicts requiring a
 manual merge. It does not remove project-local files.
+
+### Update an existing Cursor project
+
+After updating the CLI, refresh the personal Cursor rule separately:
+
+```sh
+orchestrate cursor-rules --print
+```
+
+Compare the output with your current Cursor Settings → Rules → User Rules,
+then paste or merge it there. The CLI does not edit Cursor User Rules for you.
+From each existing project root, preview the current project files:
+
+```sh
+orchestrate init-project --tools cursor
+```
+
+To obtain the current rule and commands for comparison, run
+`orchestrate init-project --tools cursor --apply` in a new empty temporary
+directory. On the verified working branch of your existing project, compare
+those generated `.cursor/rules/` and `.cursor/commands/` files with your
+project's versions and merge the changes you want. Review the reported
+conflicts before merging.
+`orchestrate init-project --tools cursor --apply` can create missing files, but
+it preserves every existing project file, including files you modified; it
+does not update or silently overwrite them. Keep a copy of your custom rules
+and commands while merging.
 
 ## Work-versus-personal boundaries
 

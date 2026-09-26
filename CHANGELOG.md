@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.4.0](https://github.com/jmpompeo/orchestra/compare/v2.3.2...v2.4.0) (2026-09-26)
+
+
+### Features
+
+* improve workflow skill handoffs ([#20](https://github.com/jmpompeo/orchestra/issues/20)) ([8ce1416](https://github.com/jmpompeo/orchestra/commit/8ce1416b4648e05cd211b6ce260ab769c88c4c7c))
+
+## [2.3.2](https://github.com/jmpompeo/orchestra/compare/v2.3.1...v2.3.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **install:** resolve embedded assets on Windows ([#17](https://github.com/jmpompeo/orchestra/issues/17)) ([1c467e8](https://github.com/jmpompeo/orchestra/commit/1c467e82c8d838d496054041491704ebd869e524))
+
 ## [2.3.1](https://github.com/jmpompeo/orchestra/compare/v2.3.0...v2.3.1) (2026-09-23)
 
 

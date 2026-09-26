@@ -9,6 +9,12 @@ static void Check(bool condition, string message)
     if (!condition) throw new Exception("FAILED: " + message);
 }
 
+static void CheckRenderedPolicy(string output, string policy, string destination)
+{
+    Check(output.Contains(policy, StringComparison.Ordinal), $"{destination} contains the complete shared workflow policy");
+    Check(!output.Contains("{{WORKFLOW_POLICY}}", StringComparison.Ordinal), $"{destination} has no unresolved workflow marker");
+}
+
 static (int ExitCode, string Output, string Error) Capture(HarnessApp app, string[] args)
 {
     var previousOutput = Console.Out;
@@ -49,6 +55,10 @@ Check(!cursor.Contains("name: demo", StringComparison.Ordinal), "Cursor command 
 Check(cursor.Contains("Do work.", StringComparison.Ordinal), "Cursor command retains skill body");
 var sums = ChecksumParser.Parse(new string('a', 64) + "  orchestrate-osx-arm64.zip\n");
 Check(sums["orchestrate-osx-arm64.zip"] == new string('a', 64), "checksum parser reads a valid manifest");
+var workflowPolicy = new AssetStore().ReadText("global/shared/workflow-policy.md").Trim();
+Check(workflowPolicy.Contains("clean working tree", StringComparison.Ordinal) && workflowPolicy.Contains("attached HEAD", StringComparison.Ordinal) && workflowPolicy.Contains("wait for confirmation", StringComparison.Ordinal) && workflowPolicy.Contains("before editing", StringComparison.Ordinal), "shared policy requires branch verification before edits");
+Check(workflowPolicy.Contains("agentic-feature-delivery", StringComparison.Ordinal) && workflowPolicy.Contains("agentic-debugging", StringComparison.Ordinal) && workflowPolicy.Contains("refactor-code", StringComparison.Ordinal) && workflowPolicy.Contains("grill-me", StringComparison.Ordinal) && workflowPolicy.Contains("bootstrap-agent-harness", StringComparison.Ordinal), "shared policy routes all primary and supporting workflows");
+Check(workflowPolicy.Contains("return to the primary workflow", StringComparison.Ordinal) && workflowPolicy.Contains("read-only", StringComparison.Ordinal), "shared policy preserves return routes and audit scope");
 try
 {
     ChecksumParser.Parse(new string('a', 64) + "  duplicate.zip\n" + new string('b', 64) + "  duplicate.zip\n");
@@ -156,6 +166,8 @@ try
     var codexAgents = Directory.GetFiles(Path.Combine(home, ".codex", "agents"), "*.toml");
     Check(codexAgents.Length == 4 && codexAgents.All(path => !File.ReadAllText(path).Contains("@@", StringComparison.Ordinal)), "Codex agent models are rendered");
     Check(File.ReadAllText(Path.Combine(home, ".codex", "agents", "workflow_explorer.toml")).Contains("model = \"gpt-6-luna\"", StringComparison.Ordinal), "Codex explorer uses its configured model");
+    CheckRenderedPolicy(File.ReadAllText(Path.Combine(home, ".codex", "AGENTS.md")), workflowPolicy, "installed Codex instructions");
+    var renderedCodexInstructions = File.ReadAllBytes(Path.Combine(home, ".codex", "AGENTS.md"));
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "agentic-feature-delivery", "SKILL.md")), "Codex skill installed");
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "agentic-debugging", "SKILL.md")), "agentic-debugging skill installed");
     Check(File.Exists(Path.Combine(home, ".agents", "skills", "grill-me", "SKILL.md")), "grill-me skill installed");
@@ -181,32 +193,43 @@ try
     var claudeAgents = Directory.GetFiles(Path.Combine(home, ".claude", "agents"), "*.md");
     Check(claudeAgents.Length == 4 && claudeAgents.All(path => !File.ReadAllText(path).Contains("@@", StringComparison.Ordinal)), "Claude agent models are rendered");
     Check(File.ReadAllText(Path.Combine(home, ".claude", "agents", "workflow-explorer.md")).Contains("model: \"haiku\"", StringComparison.Ordinal), "Claude explorer uses its configured model");
+    CheckRenderedPolicy(File.ReadAllText(Path.Combine(home, ".claude", "CLAUDE.md")), workflowPolicy, "installed Claude instructions");
     Check(File.Exists(Path.Combine(home, ".claude", "skills", "agentic-debugging", "SKILL.md")), "Claude agentic-debugging skill installed");
     Check(File.Exists(Path.Combine(home, ".claude", "skills", "refactor-code", "SKILL.md")), "Claude refactor-code skill installed");
     Check(!File.Exists(Path.Combine(home, ".claude", "skills", "refactor-code", "agents", "openai.yaml")), "Claude excludes refactor-code Codex metadata");
+    var printedCursorRules = Capture(app, new[] { "cursor-rules", "--print" });
+    Check(printedCursorRules.ExitCode == 0, "Cursor user rules print succeeds");
+    CheckRenderedPolicy(printedCursorRules.Output, workflowPolicy, "printed Cursor user rules");
     Directory.CreateDirectory(project); var previous = Directory.GetCurrentDirectory(); Directory.SetCurrentDirectory(project);
     try
     {
         Check(app.Run(new[] { "init-project", "--tools", "cursor" }) == 0, "project preview succeeds");
         Check(!Directory.Exists(Path.Combine(project, ".cursor")), "project preview does not write");
         Check(app.Run(new[] { "init-project", "--tools", "cursor", "--apply" }) == 0, "Cursor project apply succeeds");
+        var cursorProjectRule = Path.Combine(project, ".cursor", "rules", "agentic-feature-workflow.mdc");
+        CheckRenderedPolicy(File.ReadAllText(cursorProjectRule), workflowPolicy, "generated Cursor project rule");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")), "Cursor command generated");
-        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")).Contains("clean working tree", StringComparison.Ordinal), "Cursor feature command retains Git gate");
+        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")).Contains("shared Git branch", StringComparison.Ordinal), "Cursor feature command refers to the shared Git gate");
         Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md")).Contains("reviewable draft or diff", StringComparison.Ordinal), "Cursor feature command retains refactor audit sequencing");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "agentic-debugging.md")), "Cursor agentic-debugging command generated");
         Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "agentic-debugging.md")).Contains("compact evidence ledger", StringComparison.Ordinal), "Cursor agentic-debugging command retains workflow body");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "grill-me.md")), "Cursor grill-me command generated");
-        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "grill-me.md")).Contains("resume\n   `$agentic-debugging`", StringComparison.Ordinal), "Cursor grill-me command returns to debugging workflow");
-        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "grill-me.md")).Contains("resume `$refactor-code`", StringComparison.Ordinal), "Cursor grill-me command returns to refactor workflow");
+        Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "grill-me.md")).Contains("Return automatically to the originating workflow", StringComparison.Ordinal), "Cursor grill-me command returns to the originating workflow");
         Check(File.Exists(Path.Combine(project, ".cursor", "commands", "refactor-code.md")), "Cursor refactor-code command generated");
         Check(File.ReadAllText(Path.Combine(project, ".cursor", "commands", "refactor-code.md")).Contains("explicit writable-file allowlist", StringComparison.Ordinal), "Cursor refactor-code command retains scope gate");
+        var cursorFeatureCommand = Path.Combine(project, ".cursor", "commands", "agentic-feature-delivery.md");
+        File.AppendAllText(cursorProjectRule, "\nUser project rule\n");
+        File.AppendAllText(cursorFeatureCommand, "\nUser command edit\n");
+        Check(app.Run(new[] { "init-project", "--tools", "cursor", "--apply" }) == 0, "repeat Cursor project apply handles existing files");
+        Check(File.ReadAllText(cursorProjectRule).EndsWith("\nUser project rule\n", StringComparison.Ordinal), "repeat apply preserves modified Cursor project rule");
+        Check(File.ReadAllText(cursorFeatureCommand).EndsWith("\nUser command edit\n", StringComparison.Ordinal), "repeat apply preserves modified Cursor command");
     }
     finally { Directory.SetCurrentDirectory(previous); }
     Check(app.Run(new[] { "uninstall", "--tools", "codex" }) == 0, "uninstall succeeds");
     Check(!File.Exists(Path.Combine(home, ".codex", "AGENTS.md")), "uninstall removes unchanged owned file");
     var legacyHome = Path.Combine(root, "legacy-home"); var legacyState = Path.Combine(root, "legacy-state");
     var legacyInstructions = Path.Combine(legacyHome, ".codex", "AGENTS.md"); Directory.CreateDirectory(Path.GetDirectoryName(legacyInstructions)!);
-    File.WriteAllBytes(legacyInstructions, new AssetStore().ReadBytes("global/codex/AGENTS.md"));
+    File.WriteAllBytes(legacyInstructions, renderedCodexInstructions);
     var legacy = new HarnessApp(legacyHome, legacyState);
     Check(legacy.Run(new[] { "install", "--tools", "codex" }) == 0, "legacy-shaped install is reported without taking ownership");
     Check(legacy.Run(new[] { "uninstall", "--tools", "codex" }) == 0, "legacy-shaped uninstall succeeds");
